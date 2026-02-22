@@ -144,6 +144,7 @@ class GameState:
     setup_forward: bool = True       # direction in forward_reverse
     setup_settlements_placed: int = 0  # for current setup player
     setup_roads_placed: int = 0
+    setup_last_settlement: Optional[int] = None  # intersection id of last setup settlement
 
     # Dev card deck (list of dev_card_type ids, shuffled)
     dev_card_deck: list[str] = field(default_factory=list)

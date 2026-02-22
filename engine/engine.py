@@ -403,7 +403,41 @@ class GameEngine:
 
         # Pending dev card action
         if self.state.pending_action:
-            legal.append({"type": "dev_card_action", "pending": self.state.pending_action})
+            pa = self.state.pending_action
+            if pa["type"] == "build_free_roads":
+                # Provide specific legal edge locations for free road placement
+                road_type = None
+                for bt_id, bt in self.config.building_types.items():
+                    if bt.counts_as_road:
+                        road_type = bt
+                        break
+                if road_type:
+                    for eid, edge in self.state.board.edges.items():
+                        if edge.building:
+                            continue
+                        # Check road connectivity
+                        a, b = edge.intersection_ids
+                        connected = False
+                        for iid in (a, b):
+                            inter = self.state.board.intersections.get(iid)
+                            if inter and inter.building and inter.building.player_id == player_id:
+                                connected = True
+                                break
+                            for adj_eid in self.state.board.intersection_edges.get(iid, []):
+                                if adj_eid == eid:
+                                    continue
+                                adj_edge = self.state.board.edges.get(adj_eid)
+                                if adj_edge and adj_edge.building and adj_edge.building.player_id == player_id:
+                                    if inter and inter.building and inter.building.player_id != player_id:
+                                        continue
+                                    connected = True
+                                    break
+                            if connected:
+                                break
+                        if connected:
+                            legal.append({"type": "dev_card_action", "location": eid})
+            else:
+                legal.append({"type": "dev_card_action", "pending": pa})
             return legal
 
         # Normal turn
@@ -525,11 +559,8 @@ class GameEngine:
                     road_type = bt_id
                     break
             if road_type:
-                # Find the settlement just placed by this player
-                last_settlement_iid = None
-                for iid, inter in self.state.board.intersections.items():
-                    if inter.building and inter.building.player_id == player_id:
-                        last_settlement_iid = iid
+                # Use the tracked last settlement placement
+                last_settlement_iid = self.state.setup_last_settlement
 
                 if last_settlement_iid is not None:
                     for eid in self.state.board.intersection_edges.get(last_settlement_iid, []):

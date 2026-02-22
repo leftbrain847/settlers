@@ -178,6 +178,7 @@ def handle_build(state: GameState, config: GameConfig, player_id: str,
     if is_setup:
         if bt.placement.location_type == "intersection":
             state.setup_settlements_placed += 1
+            state.setup_last_settlement = location
 
             # On second placement round, give starting resources
             if state.setup_round == 1 and config.setup_rules.last_placement_gives_resources:
