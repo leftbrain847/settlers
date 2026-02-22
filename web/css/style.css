@@ -1,0 +1,734 @@
+/* ============================================================
+   Settlers of Catan — Web UI Styles
+   ============================================================ */
+
+:root {
+    --bg: #1a1a2e;
+    --bg-panel: #16213e;
+    --bg-card: #0f3460;
+    --text: #e0e0e0;
+    --text-dim: #8899aa;
+    --accent: #e94560;
+    --accent2: #f39c12;
+    --success: #2ecc71;
+    --border: #2a3a5e;
+
+    /* Resource colors */
+    --brick: #c0392b;
+    --lumber: #27ae60;
+    --ore: #7f8c8d;
+    --grain: #f1c40f;
+    --wool: #2ecc71;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overflow: hidden;
+    height: 100vh;
+}
+
+/* ============================================================
+   Lobby Screen
+   ============================================================ */
+
+#lobby {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    gap: 20px;
+}
+
+#lobby h1 {
+    font-size: 3em;
+    color: var(--accent2);
+    text-shadow: 2px 2px 10px rgba(243, 156, 18, 0.3);
+}
+
+#lobby .subtitle {
+    color: var(--text-dim);
+    font-size: 1.1em;
+    margin-bottom: 20px;
+}
+
+.lobby-form {
+    background: var(--bg-panel);
+    padding: 30px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    min-width: 350px;
+}
+
+.lobby-form label {
+    color: var(--text-dim);
+    font-size: 0.9em;
+}
+
+.lobby-form input,
+.lobby-form select {
+    padding: 10px 14px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 1em;
+}
+
+.lobby-form input:focus,
+.lobby-form select:focus {
+    outline: none;
+    border-color: var(--accent2);
+}
+
+.btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    font-size: 1em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-primary {
+    background: var(--accent);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #d63851;
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background: var(--bg-card);
+    color: var(--text);
+    border: 1px solid var(--border);
+}
+
+.btn-secondary:hover {
+    background: var(--border);
+}
+
+.btn-small {
+    padding: 6px 12px;
+    font-size: 0.85em;
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* ============================================================
+   Game Layout
+   ============================================================ */
+
+#game {
+    display: none;
+    height: 100vh;
+    grid-template-columns: 260px 1fr 280px;
+    grid-template-rows: auto 1fr auto;
+    grid-template-areas:
+        "left-panel top-bar right-panel"
+        "left-panel board right-panel"
+        "left-panel bottom-bar right-panel";
+}
+
+#game.active {
+    display: grid;
+}
+
+/* ============================================================
+   Top Bar
+   ============================================================ */
+
+.top-bar {
+    grid-area: top-bar;
+    background: var(--bg-panel);
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+}
+
+.turn-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.turn-indicator {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.9em;
+    font-weight: bold;
+}
+
+.dice-display {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.die {
+    width: 40px;
+    height: 40px;
+    background: white;
+    color: #333;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3em;
+    font-weight: bold;
+    box-shadow: 1px 2px 4px rgba(0,0,0,0.3);
+}
+
+.game-phase {
+    color: var(--text-dim);
+    font-size: 0.9em;
+}
+
+/* ============================================================
+   Board Area
+   ============================================================ */
+
+.board-area {
+    grid-area: board;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: #0d1b3e;
+}
+
+.board-area svg {
+    max-width: 100%;
+    max-height: 100%;
+}
+
+/* Hex styling */
+.hex-tile {
+    stroke: #2a3a5e;
+    stroke-width: 1.5;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.hex-tile:hover {
+    opacity: 0.85;
+}
+
+.hex-tile.highlight {
+    stroke: var(--accent2);
+    stroke-width: 3;
+    filter: brightness(1.2);
+}
+
+.hex-number {
+    font-size: 14px;
+    font-weight: bold;
+    text-anchor: middle;
+    dominant-baseline: central;
+    fill: white;
+    pointer-events: none;
+}
+
+.hex-number-bg {
+    fill: rgba(0, 0, 0, 0.7);
+    pointer-events: none;
+}
+
+.hex-number.red {
+    fill: #e74c3c;
+}
+
+/* Intersection (settlement/city) spots */
+.intersection {
+    fill: rgba(255, 255, 255, 0.1);
+    stroke: none;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.intersection:hover {
+    fill: rgba(255, 255, 255, 0.4);
+}
+
+.intersection.highlight {
+    fill: rgba(243, 156, 18, 0.5);
+    stroke: var(--accent2);
+    stroke-width: 2;
+    r: 10;
+}
+
+.intersection.has-building {
+    stroke-width: 2;
+    cursor: default;
+}
+
+/* Edge (road) spots */
+.edge-line {
+    stroke: rgba(255, 255, 255, 0.05);
+    stroke-width: 3;
+    cursor: pointer;
+    transition: all 0.2s;
+    stroke-linecap: round;
+}
+
+.edge-line:hover {
+    stroke: rgba(255, 255, 255, 0.3);
+    stroke-width: 5;
+}
+
+.edge-line.highlight {
+    stroke: rgba(243, 156, 18, 0.7);
+    stroke-width: 6;
+}
+
+.edge-line.has-road {
+    stroke-width: 6;
+    cursor: default;
+}
+
+/* Buildings on the board */
+.building-settlement {
+    stroke-width: 2;
+    stroke: white;
+}
+
+.building-city {
+    stroke-width: 2;
+    stroke: white;
+}
+
+/* Port indicators */
+.port-indicator {
+    font-size: 9px;
+    fill: var(--accent2);
+    text-anchor: middle;
+    pointer-events: none;
+}
+
+/* Robber */
+.robber {
+    fill: #333;
+    stroke: #e74c3c;
+    stroke-width: 2;
+    cursor: pointer;
+}
+
+/* ============================================================
+   Left Panel — Players
+   ============================================================ */
+
+.left-panel {
+    grid-area: left-panel;
+    background: var(--bg-panel);
+    border-right: 1px solid var(--border);
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow-y: auto;
+}
+
+.panel-title {
+    font-size: 0.8em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    margin-bottom: 5px;
+}
+
+.player-card {
+    background: var(--bg-card);
+    border-radius: 8px;
+    padding: 12px;
+    border-left: 4px solid transparent;
+    transition: all 0.2s;
+}
+
+.player-card.current-turn {
+    border-left-color: var(--accent2);
+    background: rgba(243, 156, 18, 0.1);
+}
+
+.player-card.is-you {
+    border-left-color: var(--accent);
+}
+
+.player-name {
+    font-weight: bold;
+    font-size: 0.95em;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.player-color-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.player-vp {
+    color: var(--accent2);
+    font-weight: bold;
+    font-size: 0.85em;
+    margin-top: 4px;
+}
+
+.player-resources {
+    display: flex;
+    gap: 4px;
+    margin-top: 6px;
+    flex-wrap: wrap;
+}
+
+.resource-badge {
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.75em;
+    color: white;
+    font-weight: bold;
+    min-width: 20px;
+    text-align: center;
+}
+
+.resource-badge.brick { background: var(--brick); }
+.resource-badge.lumber { background: #1a7a42; }
+.resource-badge.ore { background: var(--ore); }
+.resource-badge.grain { background: #c9a800; color: #333; }
+.resource-badge.wool { background: var(--wool); }
+
+.player-achievements {
+    display: flex;
+    gap: 4px;
+    margin-top: 4px;
+}
+
+.achievement-badge {
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.7em;
+    background: var(--accent2);
+    color: #333;
+    font-weight: bold;
+}
+
+/* ============================================================
+   Right Panel — Actions & Info
+   ============================================================ */
+
+.right-panel {
+    grid-area: right-panel;
+    background: var(--bg-panel);
+    border-left: 1px solid var(--border);
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    overflow-y: auto;
+}
+
+.action-section {
+    background: var(--bg-card);
+    border-radius: 8px;
+    padding: 12px;
+}
+
+.action-section h3 {
+    font-size: 0.85em;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.action-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.action-btn {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 0.85em;
+    text-align: left;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.action-btn:hover:not(:disabled) {
+    background: var(--border);
+    border-color: var(--accent2);
+}
+
+.action-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.action-btn .cost {
+    display: flex;
+    gap: 3px;
+    margin-left: auto;
+}
+
+.action-btn .cost-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+/* Your resources display */
+.your-resources {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+}
+
+.resource-card {
+    background: var(--bg);
+    border-radius: 6px;
+    padding: 8px 4px;
+    text-align: center;
+    border: 1px solid var(--border);
+}
+
+.resource-card .count {
+    font-size: 1.4em;
+    font-weight: bold;
+}
+
+.resource-card .label {
+    font-size: 0.65em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+}
+
+/* Dev cards */
+.dev-cards-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.dev-card-item {
+    padding: 6px 10px;
+    background: var(--bg);
+    border-radius: 4px;
+    font-size: 0.85em;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    transition: all 0.2s;
+}
+
+.dev-card-item:hover {
+    border-color: var(--accent2);
+}
+
+/* ============================================================
+   Bottom Bar — Game Log
+   ============================================================ */
+
+.bottom-bar {
+    grid-area: bottom-bar;
+    background: var(--bg-panel);
+    border-top: 1px solid var(--border);
+    padding: 8px 20px;
+    max-height: 100px;
+    overflow-y: auto;
+    font-size: 0.8em;
+    color: var(--text-dim);
+}
+
+.log-entry {
+    padding: 2px 0;
+}
+
+.log-entry .player-name-log {
+    font-weight: bold;
+}
+
+/* ============================================================
+   Modals / Overlays
+   ============================================================ */
+
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+.modal {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    max-width: 500px;
+    width: 90%;
+}
+
+.modal h2 {
+    margin-bottom: 15px;
+    color: var(--accent2);
+}
+
+.modal .resource-picker {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    margin: 15px 0;
+}
+
+.modal .resource-pick {
+    text-align: center;
+    padding: 10px;
+    background: var(--bg);
+    border-radius: 6px;
+    border: 1px solid var(--border);
+}
+
+.modal .resource-pick .pick-count {
+    font-size: 1.5em;
+    font-weight: bold;
+    margin: 5px 0;
+}
+
+.modal .resource-pick button {
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text);
+    border-radius: 4px;
+    cursor: pointer;
+    margin: 0 2px;
+}
+
+.modal .resource-pick button:hover {
+    background: var(--border);
+}
+
+/* Trade modal */
+.trade-section {
+    display: flex;
+    gap: 20px;
+    margin: 15px 0;
+}
+
+.trade-column {
+    flex: 1;
+}
+
+.trade-column h4 {
+    margin-bottom: 8px;
+    color: var(--text-dim);
+    font-size: 0.9em;
+}
+
+/* Winner overlay */
+.winner-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.winner-overlay.active {
+    display: flex;
+}
+
+.winner-overlay h1 {
+    font-size: 3em;
+    color: var(--accent2);
+}
+
+.winner-overlay .winner-name {
+    font-size: 2em;
+    color: white;
+}
+
+/* ============================================================
+   Tooltip
+   ============================================================ */
+
+.tooltip {
+    display: none;
+    position: fixed;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 0.85em;
+    z-index: 50;
+    pointer-events: none;
+    max-width: 200px;
+}
+
+/* ============================================================
+   Responsive
+   ============================================================ */
+
+@media (max-width: 900px) {
+    #game.active {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto 1fr auto auto;
+        grid-template-areas:
+            "top-bar"
+            "left-panel"
+            "board"
+            "right-panel"
+            "bottom-bar";
+    }
+
+    .left-panel, .right-panel {
+        flex-direction: row;
+        overflow-x: auto;
+        border: none;
+        border-bottom: 1px solid var(--border);
+    }
+}

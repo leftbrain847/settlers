@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settlers</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<!-- ============================================================ -->
+<!-- Lobby Screen                                                   -->
+<!-- ============================================================ -->
+<div id="lobby">
+    <h1>Settlers</h1>
+    <p class="subtitle">Dynamic Catan Engine</p>
+
+    <div class="lobby-form">
+        <label for="player-name">Your Name</label>
+        <input type="text" id="player-name" value="Player 1" placeholder="Enter your name">
+
+        <label for="num-ai">AI Opponents</label>
+        <select id="num-ai">
+            <option value="1">1 Bot</option>
+            <option value="2">2 Bots</option>
+            <option value="3" selected>3 Bots</option>
+        </select>
+
+        <button class="btn btn-primary" id="btn-start-game">Start Game</button>
+
+        <div style="text-align: center; color: var(--text-dim); font-size: 0.85em;">
+            <span>— or —</span>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+            <input type="text" id="join-game-id" placeholder="Game ID to join" style="flex: 1;">
+            <button class="btn btn-secondary" id="btn-join-game">Join</button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- Game Screen                                                    -->
+<!-- ============================================================ -->
+<div id="game">
+    <!-- Top Bar -->
+    <div class="top-bar">
+        <div class="turn-info">
+            <span class="game-phase" id="game-phase">Setup</span>
+            <span class="turn-indicator" id="turn-indicator">—</span>
+        </div>
+        <div class="dice-display" id="dice-display" style="display:none;">
+            <div class="die" id="die1">-</div>
+            <div class="die" id="die2">-</div>
+            <span id="dice-total" style="font-weight:bold; color:var(--accent2);"></span>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center;">
+            <span id="dev-cards-remaining" style="font-size:0.85em; color:var(--text-dim);"></span>
+            <span id="game-id-display" style="font-size:0.75em; color:var(--text-dim);"></span>
+        </div>
+    </div>
+
+    <!-- Left Panel — Players -->
+    <div class="left-panel" id="players-panel">
+        <div class="panel-title">Players</div>
+    </div>
+
+    <!-- Board -->
+    <div class="board-area" id="board-area">
+        <svg id="board-svg" viewBox="-350 -350 700 700" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+
+    <!-- Right Panel — Actions -->
+    <div class="right-panel" id="actions-panel">
+        <div class="panel-title">Your Resources</div>
+        <div class="your-resources" id="your-resources"></div>
+
+        <div class="action-section">
+            <h3>Actions</h3>
+            <div class="action-buttons" id="action-buttons"></div>
+        </div>
+
+        <div class="action-section" id="dev-cards-section" style="display:none;">
+            <h3>Development Cards</h3>
+            <div class="dev-cards-list" id="dev-cards-list"></div>
+        </div>
+
+        <div class="action-section" id="trade-section">
+            <h3>Bank Trade</h3>
+            <div id="bank-trade-area"></div>
+        </div>
+    </div>
+
+    <!-- Bottom Bar — Log -->
+    <div class="bottom-bar" id="game-log"></div>
+</div>
+
+<!-- ============================================================ -->
+<!-- Modals                                                         -->
+<!-- ============================================================ -->
+
+<!-- Discard Modal -->
+<div class="modal-overlay" id="discard-modal">
+    <div class="modal">
+        <h2>Discard Resources</h2>
+        <p id="discard-message">You must discard cards.</p>
+        <div class="resource-picker" id="discard-picker"></div>
+        <button class="btn btn-primary" id="btn-confirm-discard">Confirm Discard</button>
+    </div>
+</div>
+
+<!-- Resource Picker Modal (Year of Plenty) -->
+<div class="modal-overlay" id="resource-picker-modal">
+    <div class="modal">
+        <h2 id="resource-picker-title">Choose Resources</h2>
+        <div class="resource-picker" id="resource-picker"></div>
+        <button class="btn btn-primary" id="btn-confirm-resource-pick">Confirm</button>
+    </div>
+</div>
+
+<!-- Monopoly Modal -->
+<div class="modal-overlay" id="monopoly-modal">
+    <div class="modal">
+        <h2>Monopoly — Choose a Resource</h2>
+        <div class="action-buttons" id="monopoly-choices"></div>
+    </div>
+</div>
+
+<!-- Trade Offer Modal -->
+<div class="modal-overlay" id="trade-offer-modal">
+    <div class="modal">
+        <h2>Make a Trade Offer</h2>
+        <div class="trade-section">
+            <div class="trade-column">
+                <h4>You Give</h4>
+                <div class="resource-picker" id="trade-give-picker"></div>
+            </div>
+            <div class="trade-column">
+                <h4>You Want</h4>
+                <div class="resource-picker" id="trade-want-picker"></div>
+            </div>
+        </div>
+        <div style="display:flex; gap:10px;">
+            <button class="btn btn-primary" id="btn-send-trade">Send Offer</button>
+            <button class="btn btn-secondary" id="btn-cancel-trade">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- Incoming Trade Modal -->
+<div class="modal-overlay" id="incoming-trade-modal">
+    <div class="modal">
+        <h2>Trade Offer</h2>
+        <p id="incoming-trade-text"></p>
+        <div style="display:flex; gap:10px; margin-top:15px;">
+            <button class="btn btn-primary" id="btn-accept-trade">Accept</button>
+            <button class="btn btn-secondary" id="btn-decline-trade">Decline</button>
+        </div>
+    </div>
+</div>
+
+<!-- Winner Overlay -->
+<div class="winner-overlay" id="winner-overlay">
+    <h1>Game Over!</h1>
+    <div class="winner-name" id="winner-name"></div>
+    <button class="btn btn-primary" onclick="location.reload()">Play Again</button>
+</div>
+
+<!-- Tooltip -->
+<div class="tooltip" id="tooltip"></div>
+
+<script src="/static/js/board.js"></script>
+<script src="/static/js/game.js"></script>
+<script src="/static/js/ui.js"></script>
+
+</body>
+</html>
