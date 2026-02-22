@@ -20,14 +20,19 @@
 
         try {
             await Game.createGame(name, numAI);
-            Game.connectWebSocket(onGameUpdate);
-            await Game.startGame();
 
+            // Switch to game screen and init renderer BEFORE starting
+            // so WebSocket state updates can render immediately
             document.getElementById('lobby').style.display = 'none';
             document.getElementById('game').classList.add('active');
             document.getElementById('game-id-display').textContent = `ID: ${Game.getGameId()}`;
-
             BoardRenderer.init(document.getElementById('board-svg'));
+
+            Game.connectWebSocket(onGameUpdate);
+            await Game.startGame();
+
+            // Re-render in case state arrived before WebSocket onmessage fired
+            renderAll();
         } catch (e) {
             console.error(e);
             btnStart.disabled = false;
@@ -42,13 +47,13 @@
 
         try {
             await Game.joinGame(gid, name);
-            Game.connectWebSocket(onGameUpdate);
 
             document.getElementById('lobby').style.display = 'none';
             document.getElementById('game').classList.add('active');
             document.getElementById('game-id-display').textContent = `ID: ${gid}`;
-
             BoardRenderer.init(document.getElementById('board-svg'));
+
+            Game.connectWebSocket(onGameUpdate);
         } catch (e) {
             console.error(e);
         }

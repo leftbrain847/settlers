@@ -78,6 +78,8 @@ const BoardRenderer = (() => {
     // ---------------------------------------------------------------
 
     function render(boardState, config, callbacks) {
+        if (!svg || !hexGroup) return;
+
         // Clear all layers
         hexGroup.innerHTML = '';
         edgeGroup.innerHTML = '';
