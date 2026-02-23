@@ -416,7 +416,7 @@ class GameEngine:
                     player = self.state.get_player(player_id)
                     placed = player.buildings_placed.get(road_type.id, 0)
                     if placed >= road_type.max_per_player:
-                        # No more roads can be placed — clear the pending action
+                        # No more roads can be placed — skip
                         legal.append({"type": "dev_card_action", "location": -1, "skip": True})
                         return legal
                     for eid, edge in self.state.board.edges.items():
@@ -443,6 +443,15 @@ class GameEngine:
                                 break
                         if connected:
                             legal.append({"type": "dev_card_action", "location": eid})
+                    # If no legal road locations, allow skip
+                    if not legal:
+                        legal.append({"type": "dev_card_action", "location": -1, "skip": True})
+            elif pa["type"] == "choose_monopoly_resource":
+                for res_id in self.config.resource_types:
+                    legal.append({"type": "dev_card_action", "resource": res_id})
+            elif pa["type"] == "choose_resources":
+                # Year of Plenty — provide a generic action, params filled by UI/AI
+                legal.append({"type": "dev_card_action", "pending": pa})
             else:
                 legal.append({"type": "dev_card_action", "pending": pa})
             return legal

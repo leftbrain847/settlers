@@ -350,13 +350,29 @@ async def run_ai_turns(game_id: str):
         if action.type == "dev_card_action":
             pa = engine.state.pending_action
             if pa and pa["type"] == "choose_monopoly_resource":
-                action.params["resource"] = strategy.choose_monopoly_resource(engine, current)
+                if "resource" not in action.params:
+                    action.params["resource"] = strategy.choose_monopoly_resource(engine, current)
             elif pa and pa["type"] == "choose_resources":
-                action.params["resources"] = strategy.choose_year_of_plenty(engine, current, pa["count"])
+                if "resources" not in action.params:
+                    action.params["resources"] = strategy.choose_year_of_plenty(engine, current, pa["count"])
+            elif pa and pa["type"] == "build_free_roads":
+                # Location already in params from legal action; handle skip
+                if action.params.get("skip") or action.params.get("location") == -1:
+                    pass  # Will be handled by the handler
 
         result = engine.do_action(action)
         if not result.success:
-            # AI made an invalid move — try to recover
+            # AI made an invalid move — try to recover by clearing stuck state
+            if engine.state.pending_action:
+                engine.state.pending_action = None
+            break
+
+        # Check for error events that indicate the action didn't actually work
+        has_error = any(e.get("type") == "error" for e in result.events)
+        if has_error:
+            # Clear stuck pending actions to prevent infinite loops
+            if engine.state.pending_action:
+                engine.state.pending_action = None
             break
 
         await broadcast_state(game_id)

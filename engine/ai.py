@@ -214,14 +214,18 @@ class SmartStrategy(AIStrategy):
                 chosen = self._choose_road(engine, player_id, roads)
                 return self._fallback._legal_to_action(chosen, player_id)
 
-        # Buy dev cards if we can't build anything useful
-        if "buy_dev_card" in by_type:
-            return self._fallback._legal_to_action(by_type["buy_dev_card"][0], player_id)
-
-        # Play dev cards if beneficial
+        # Play dev cards if beneficial (before buying more)
         if "play_dev_card" in by_type:
             chosen = random.choice(by_type["play_dev_card"])
             return self._fallback._legal_to_action(chosen, player_id)
+
+        # Buy dev cards only sometimes — prefer saving for buildings
+        if "buy_dev_card" in by_type:
+            player = engine.state.get_player(player_id)
+            # Only buy if we have decent resources and some randomness
+            total_res = sum(player.resources.values())
+            if total_res >= 5 or random.random() < 0.3:
+                return self._fallback._legal_to_action(by_type["buy_dev_card"][0], player_id)
 
         # End turn
         if "end_turn" in by_type:
