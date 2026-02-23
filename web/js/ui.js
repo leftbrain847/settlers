@@ -20,18 +20,10 @@
         arrow.classList.toggle('open', !visible);
     });
 
-    // Helper: enter game screen after create/join
-    async function enterGame(gid) {
-        document.getElementById('lobby').style.display = 'none';
-        document.getElementById('game').classList.add('active');
-        document.getElementById('game-id-display').textContent = `ID: ${gid}`;
-        BoardRenderer.init(document.getElementById('board-svg'));
-        await Game.connectWebSocket(onGameUpdate);
-    }
+    let isHost = false;
 
     // Helper: build a shareable join URL
     async function getJoinUrl(gid) {
-        // Try to get the public URL from the server (set when using --share)
         try {
             const resp = await fetch('/api/server-info');
             const info = await resp.json();
@@ -42,10 +34,15 @@
         return `${location.origin}?join=${gid}`;
     }
 
-    // Helper: show a copy-link banner after game creation
-    async function showJoinLink(gid) {
-        const url = await getJoinUrl(gid);
+    // Helper: enter game screen (called when game actually starts)
+    async function enterGame(gid) {
+        document.getElementById('waiting-room').classList.remove('active');
+        document.getElementById('game').classList.add('active');
+        BoardRenderer.init(document.getElementById('board-svg'));
+
+        // Show copyable game ID in top bar
         const display = document.getElementById('game-id-display');
+        const url = await getJoinUrl(gid);
         display.innerHTML = '';
         const link = document.createElement('span');
         link.textContent = `ID: ${gid}`;
@@ -60,11 +57,63 @@
         display.appendChild(link);
     }
 
+    // Helper: show the waiting room
+    async function enterWaitingRoom(gid, players) {
+        document.getElementById('lobby').style.display = 'none';
+        document.getElementById('waiting-room').classList.add('active');
+
+        // Show/hide host controls
+        const btnBegin = document.getElementById('btn-begin-game');
+        const statusText = document.getElementById('waiting-room-status');
+        if (isHost) {
+            btnBegin.style.display = '';
+            statusText.style.display = 'none';
+        } else {
+            btnBegin.style.display = 'none';
+            statusText.style.display = '';
+        }
+
+        // Show join link
+        const url = await getJoinUrl(gid);
+        document.getElementById('waiting-room-url').textContent = url;
+        document.getElementById('btn-copy-link').addEventListener('click', () => {
+            navigator.clipboard.writeText(url).then(() => {
+                document.getElementById('btn-copy-link').textContent = 'Copied!';
+                setTimeout(() => { document.getElementById('btn-copy-link').textContent = 'Copy'; }, 2000);
+            });
+        });
+
+        // Render initial player list
+        renderWaitingRoomPlayers(players);
+
+        // Connect WebSocket (receives lobby_update and state_update messages)
+        await Game.connectWebSocket(onGameUpdate);
+    }
+
+    function renderWaitingRoomPlayers(players) {
+        const list = document.getElementById('waiting-room-player-list');
+        list.innerHTML = '';
+        for (const p of players) {
+            const div = document.createElement('div');
+            div.className = 'waiting-room-player';
+            const isMe = p.id === Game.getPlayerId();
+            let tag = '';
+            if (p.is_ai) tag = '<span class="player-tag">Bot</span>';
+            else if (isMe) tag = '<span class="player-tag">You</span>';
+            div.innerHTML = `
+                <span class="player-color-dot" style="background:${p.color}"></span>
+                <span class="player-label">${p.name}</span>
+                ${tag}
+            `;
+            list.appendChild(div);
+        }
+    }
+
+    // --- Create Game (host) ---
     btnStart.addEventListener('click', async () => {
         const name = document.getElementById('player-name').value || 'Player 1';
         const numAI = parseInt(document.getElementById('num-ai').value);
 
-        // Gather settings
         const settings = {
             vp_to_win: parseInt(document.getElementById('setting-vp').value) || 10,
             board_rings: parseInt(document.getElementById('setting-rings').value) || 3,
@@ -73,14 +122,12 @@
         };
 
         btnStart.disabled = true;
-        btnStart.textContent = 'Starting...';
+        btnStart.textContent = 'Creating...';
 
         try {
-            await Game.createGame(name, numAI, settings);
-            await enterGame(Game.getGameId());
-            await showJoinLink(Game.getGameId());
-            await Game.startGame();
-            renderAll();
+            isHost = true;
+            const data = await Game.createGame(name, numAI, settings);
+            await enterWaitingRoom(Game.getGameId(), data.players);
         } catch (e) {
             console.error(e);
             btnStart.disabled = false;
@@ -88,14 +135,32 @@
         }
     });
 
+    // --- "Begin Game" button in waiting room (host only) ---
+    document.getElementById('btn-begin-game').addEventListener('click', async () => {
+        const btn = document.getElementById('btn-begin-game');
+        btn.disabled = true;
+        btn.textContent = 'Starting...';
+        try {
+            await Game.startGame();
+        } catch (e) {
+            console.error(e);
+            btn.disabled = false;
+            btn.textContent = 'Begin Game';
+        }
+    });
+
+    // --- Join Game ---
     btnJoin.addEventListener('click', async () => {
         const gid = document.getElementById('join-game-id').value.trim();
         const name = document.getElementById('player-name').value || 'Player';
         if (!gid) return;
 
         try {
-            await Game.joinGame(gid, name);
-            await enterGame(gid);
+            isHost = false;
+            const data = await Game.joinGame(gid, name);
+            // Build player list from the join response (we only know our own info)
+            // The WebSocket init or lobby_update will give us the full list
+            await enterWaitingRoom(gid, []);
         } catch (e) {
             console.error(e);
         }
@@ -107,14 +172,11 @@
         const joinId = params.get('join');
         if (!joinId) return;
 
-        // Pre-fill the game ID and show a join prompt
         document.getElementById('join-game-id').value = joinId;
-        // Auto-focus the name field so the user just types their name and clicks join
         document.getElementById('player-name').focus();
         document.getElementById('player-name').placeholder = 'Enter your name to join';
 
-        // Visual hint that we're joining a specific game
-        const subtitle = document.querySelector('.subtitle');
+        const subtitle = document.querySelector('#lobby .subtitle');
         if (subtitle) subtitle.textContent = `Joining game ${joinId.slice(0, 8)}...`;
     })();
 
@@ -125,13 +187,35 @@
     let prevState = null;
 
     function onGameUpdate(type, data) {
-        if (type === 'init') {
-            const config = Game.getConfig();
-            BoardRenderer.setTerrainColors(config);
-            renderAll();
+        if (type === 'lobby_update') {
+            // New player joined — refresh the waiting room player list
+            renderWaitingRoomPlayers(data);
+        }
+        else if (type === 'init') {
+            const state = Game.getState();
+            if (state && state.phase === 'lobby') {
+                // Still in lobby — populate waiting room from init state
+                const players = state.player_order.map(pid => {
+                    const p = state.players[pid];
+                    return { id: pid, name: p.name, color: p.color, is_ai: false };
+                });
+                renderWaitingRoomPlayers(players);
+            } else {
+                // Game already started (e.g. reconnecting or host just started)
+                const config = Game.getConfig();
+                enterGame(Game.getGameId());
+                BoardRenderer.setTerrainColors(config);
+                renderAll();
+            }
         }
         else if (type === 'state_update') {
             const newState = Game.getState();
+            // Transition from waiting room to game screen when game starts
+            if (newState && newState.phase !== 'lobby' && !document.getElementById('game').classList.contains('active')) {
+                const config = Game.getConfig();
+                enterGame(Game.getGameId());
+                BoardRenderer.setTerrainColors(config);
+            }
             checkNotifications(prevState, newState);
             prevState = newState ? JSON.parse(JSON.stringify(newState)) : null;
             renderAll();

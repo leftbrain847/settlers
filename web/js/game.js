@@ -75,6 +75,9 @@ const Game = (() => {
                 }
                 onUpdate('state_update');
             }
+            else if (msg.type === 'lobby_update') {
+                onUpdate('lobby_update', msg.players);
+            }
             else if (msg.type === 'error') {
                 onUpdate('error', msg.message);
             }

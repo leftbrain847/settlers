@@ -117,7 +117,10 @@ async def create_game(body: dict = None):
         "game_id": engine.state.game_id,
         "player_id": human_id,
         "ai_players": ai_ids,
-        "players": [{"id": p.id, "name": p.name} for p in engine.state.players.values()],
+        "players": [
+            {"id": p.id, "name": p.name, "color": p.color, "is_ai": manager.is_ai(engine.state.game_id, p.id)}
+            for p in engine.state.players.values()
+        ],
     }
 
 
@@ -130,6 +133,10 @@ async def join_game(game_id: str, body: dict = None):
 
     name = body.get("player_name", f"Player {len(engine.state.players) + 1}")
     pid = engine.add_player(name)
+
+    # Notify existing WebSocket clients that a new player joined
+    await broadcast_lobby(game_id)
+
     return {"player_id": pid, "game_id": game_id}
 
 
@@ -280,6 +287,23 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str, player_id: str)
 # ---------------------------------------------------------------------------
 # Broadcasting
 # ---------------------------------------------------------------------------
+
+async def broadcast_lobby(game_id: str):
+    """Send lobby player list to all connected players (used when someone joins)."""
+    engine = manager.get_game(game_id)
+    if not engine:
+        return
+    players = [
+        {"id": p.id, "name": p.name, "color": p.color, "is_ai": manager.is_ai(game_id, p.id)}
+        for p in engine.state.players.values()
+    ]
+    connections = manager.connections.get(game_id, {})
+    for pid, ws in list(connections.items()):
+        try:
+            await ws.send_json({"type": "lobby_update", "players": players})
+        except Exception:
+            connections.pop(pid, None)
+
 
 async def broadcast_state(game_id: str):
     """Send updated state to all connected players."""

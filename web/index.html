@@ -74,6 +74,32 @@
 </div>
 
 <!-- ============================================================ -->
+<!-- Waiting Room (between lobby form and game)                     -->
+<!-- ============================================================ -->
+<div id="waiting-room">
+    <h1>Settlers</h1>
+    <p class="subtitle">Waiting for players...</p>
+
+    <div class="waiting-room-card">
+        <div class="waiting-room-link" id="waiting-room-link">
+            <span class="link-label">Share this link:</span>
+            <div class="link-row">
+                <code id="waiting-room-url">...</code>
+                <button class="btn btn-small btn-secondary" id="btn-copy-link">Copy</button>
+            </div>
+        </div>
+
+        <div class="waiting-room-players">
+            <div class="panel-title">Players</div>
+            <div id="waiting-room-player-list"></div>
+        </div>
+
+        <button class="btn btn-primary" id="btn-begin-game" style="display:none;">Begin Game</button>
+        <p id="waiting-room-status" class="waiting-room-status">Waiting for the host to start...</p>
+    </div>
+</div>
+
+<!-- ============================================================ -->
 <!-- Game Screen                                                    -->
 <!-- ============================================================ -->
 <div id="game">
