@@ -28,7 +28,7 @@
             document.getElementById('game-id-display').textContent = `ID: ${Game.getGameId()}`;
             BoardRenderer.init(document.getElementById('board-svg'));
 
-            Game.connectWebSocket(onGameUpdate);
+            await Game.connectWebSocket(onGameUpdate);
             await Game.startGame();
 
             // Re-render in case state arrived before WebSocket onmessage fired
@@ -53,7 +53,7 @@
             document.getElementById('game-id-display').textContent = `ID: ${gid}`;
             BoardRenderer.init(document.getElementById('board-svg'));
 
-            Game.connectWebSocket(onGameUpdate);
+            await Game.connectWebSocket(onGameUpdate);
         } catch (e) {
             console.error(e);
         }

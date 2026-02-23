@@ -198,15 +198,16 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str, player_id: str)
     manager.connections[game_id][player_id] = websocket
 
     try:
-        # Send initial state
+        # Send initial state (include legal_actions so client can render immediately)
         state = engine.get_state_for_player(player_id)
+        legal = engine.get_legal_actions(player_id)
         config_data = {
             "resource_types": {k: {"id": v.id, "name": v.name} for k, v in engine.config.resource_types.items()},
             "terrain_types": {k: {"id": v.id, "name": v.name, "color": v.color, "produces": v.produces} for k, v in engine.config.terrain_types.items()},
             "building_types": {k: {"id": v.id, "name": v.name, "cost": v.cost, "vp": v.vp, "max_per_player": v.max_per_player} for k, v in engine.config.building_types.items()},
             "port_types": {k: {"id": v.id, "name": v.name, "ratio": v.ratio, "resource": v.resource} for k, v in engine.config.port_types.items()},
         }
-        await websocket.send_json({"type": "init", "state": state, "config": config_data})
+        await websocket.send_json({"type": "init", "state": state, "config": config_data, "legal_actions": legal})
 
         # Listen for actions
         while True:

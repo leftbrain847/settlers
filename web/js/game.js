@@ -47,8 +47,11 @@ const Game = (() => {
     }
 
     function connectWebSocket(onUpdate) {
+        return new Promise((resolve) => {
         const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
         ws = new WebSocket(`${protocol}//${location.host}/ws/${gameId}/${playerId}`);
+
+        ws.onopen = () => resolve();
 
         ws.onmessage = (event) => {
             const msg = JSON.parse(event.data);
@@ -60,7 +63,7 @@ const Game = (() => {
                 for (const [pid, p] of Object.entries(state.players)) {
                     playerColors[pid] = p.color;
                 }
-                legalActions = [];
+                legalActions = msg.legal_actions || [];
                 onUpdate('init');
             }
             else if (msg.type === 'state_update') {
@@ -81,8 +84,9 @@ const Game = (() => {
             }
         };
 
-        ws.onerror = () => onUpdate('error', 'WebSocket error');
+        ws.onerror = () => { onUpdate('error', 'WebSocket error'); resolve(); };
         ws.onclose = () => onUpdate('disconnected');
+        });
     }
 
     // ---------------------------------------------------------------
