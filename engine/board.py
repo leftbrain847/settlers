@@ -37,17 +37,15 @@ def hex_corners_axial(q: int, r: int) -> list[tuple[float, float]]:
     """
     Return the 6 corner positions of a hex in axial-fractional coords.
     Each corner is shared by up to 3 hexes.
-    We use a consistent corner numbering (0=E, going clockwise).
+    Order matches pointy-top rendering: starting at -30° (NE), going clockwise.
     """
-    # Corners in offset from center, using thirds to avoid floating issues
-    # We represent corners as (q + dq/3, r + dr/3) tuples
     corners = [
-        (q + 2/3, r + 1/3),   # 0: E
-        (q + 1/3, r - 1/3),   # 1: NE
-        (q - 1/3, r - 2/3),   # 2: NW
-        (q - 2/3, r - 1/3),   # 3: W
-        (q - 1/3, r + 1/3),   # 4: SW
-        (q + 1/3, r + 2/3),   # 5: SE
+        (q + 2/3, r - 1/3),   # 0: NE  (angle -30°)
+        (q + 1/3, r + 1/3),   # 1: SE  (angle  30°)
+        (q - 1/3, r + 2/3),   # 2: S   (angle  90°)
+        (q - 2/3, r + 1/3),   # 3: SW  (angle 150°)
+        (q - 1/3, r - 1/3),   # 4: NW  (angle 210°)
+        (q + 1/3, r - 2/3),   # 5: N   (angle 270°)
     ]
     return corners
 
