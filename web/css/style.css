@@ -564,6 +564,55 @@ body {
 }
 
 /* ============================================================
+   Notification Banner
+   ============================================================ */
+
+.notification-banner {
+    position: fixed;
+    top: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 50;
+    pointer-events: none;
+}
+
+.notification-banner .notif {
+    background: rgba(231, 76, 60, 0.95);
+    color: white;
+    padding: 12px 28px;
+    border-radius: 8px;
+    font-size: 1.1em;
+    font-weight: bold;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    animation: notif-in 0.3s ease-out, notif-out 0.5s ease-in 2.5s forwards;
+    pointer-events: none;
+    margin-bottom: 8px;
+}
+
+.notification-banner .notif.robber {
+    background: linear-gradient(135deg, #c0392b, #e74c3c);
+}
+
+.notification-banner .notif.info {
+    background: linear-gradient(135deg, #2980b9, #3498db);
+}
+
+.notification-banner .notif.warning {
+    background: linear-gradient(135deg, #d35400, #e67e22);
+}
+
+@keyframes notif-in {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes notif-out {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+/* ============================================================
    Bottom Bar — Game Log
    ============================================================ */
 

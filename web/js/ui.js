@@ -63,6 +63,8 @@
     // Game update handler
     // ---------------------------------------------------------------
 
+    let prevState = null;
+
     function onGameUpdate(type, data) {
         if (type === 'init') {
             const config = Game.getConfig();
@@ -70,6 +72,9 @@
             renderAll();
         }
         else if (type === 'state_update') {
+            const newState = Game.getState();
+            checkNotifications(prevState, newState);
+            prevState = newState ? JSON.parse(JSON.stringify(newState)) : null;
             renderAll();
             checkModals();
         }
@@ -78,6 +83,38 @@
         }
         else if (type === 'disconnected') {
             addLog('Disconnected from server.');
+        }
+    }
+
+    // ---------------------------------------------------------------
+    // Notifications
+    // ---------------------------------------------------------------
+
+    function showNotification(text, type) {
+        const banner = document.getElementById('notification-banner');
+        const div = document.createElement('div');
+        div.className = 'notif ' + (type || '');
+        div.textContent = text;
+        banner.appendChild(div);
+        setTimeout(() => div.remove(), 3200);
+    }
+
+    function checkNotifications(prev, next) {
+        if (!next) return;
+
+        // Robber activated — a 7 was rolled and it's your turn
+        if (next.pending_robber_move && Game.isMyTurn()) {
+            if (!prev || !prev.pending_robber_move) {
+                showNotification('A 7 was rolled! Move the robber to a new hex.', 'robber');
+            }
+        }
+
+        // Discard needed
+        if (next.pending_discards && next.pending_discards[Game.getPlayerId()]) {
+            if (!prev || !prev.pending_discards || !prev.pending_discards[Game.getPlayerId()]) {
+                const count = next.pending_discards[Game.getPlayerId()];
+                showNotification('You must discard ' + count + ' cards!', 'warning');
+            }
         }
     }
 
