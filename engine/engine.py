@@ -20,7 +20,7 @@ from .actions import Action, ActionResult, get_validator, get_handler
 from . import handlers as _handlers_module
 
 
-PLAYER_COLORS = ["#e74c3c", "#3498db", "#2ecc71", "#f39c12", "#9b59b6", "#1abc9c"]
+PLAYER_COLORS = ["#e74c3c", "#3498db", "#ecf0f1", "#f39c12", "#9b59b6", "#1abc9c"]
 
 
 class GameEngine:

@@ -33,6 +33,7 @@ body {
     color: var(--text);
     overflow: hidden;
     height: 100vh;
+    font-size: 15px;
 }
 
 /* ============================================================
@@ -214,7 +215,7 @@ body {
     align-items: center;
     justify-content: center;
     overflow: hidden;
-    background: #0d1b3e;
+    background: radial-gradient(ellipse at center, #0d2147 0%, #091428 60%, #050d1a 100%);
 }
 
 .board-area svg {
@@ -224,24 +225,25 @@ body {
 
 /* Hex styling */
 .hex-tile {
-    stroke: #2a3a5e;
-    stroke-width: 1.5;
+    stroke: rgba(0, 0, 0, 0.4);
+    stroke-width: 2;
     cursor: pointer;
     transition: opacity 0.2s;
+    filter: saturate(0.85) brightness(0.9);
 }
 
 .hex-tile:hover {
-    opacity: 0.85;
+    filter: saturate(1) brightness(1);
 }
 
 .hex-tile.highlight {
     stroke: var(--accent2);
     stroke-width: 3;
-    filter: brightness(1.2);
+    filter: brightness(1.3) saturate(1.1);
 }
 
 .hex-number {
-    font-size: 14px;
+    font-size: 16px;
     font-weight: bold;
     text-anchor: middle;
     dominant-baseline: central;
@@ -250,12 +252,15 @@ body {
 }
 
 .hex-number-bg {
-    fill: rgba(0, 0, 0, 0.7);
+    fill: rgba(0, 0, 0, 0.75);
+    stroke: rgba(255, 255, 255, 0.2);
+    stroke-width: 1;
     pointer-events: none;
 }
 
 .hex-number.red {
     fill: #e74c3c;
+    font-size: 18px;
 }
 
 /* Intersection (settlement/city) spots */
@@ -308,19 +313,25 @@ body {
 
 /* Buildings on the board */
 .building-settlement {
-    stroke-width: 2;
-    stroke: white;
+    stroke-width: 2.5;
+    stroke: rgba(0, 0, 0, 0.6);
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5));
 }
 
 .building-city {
-    stroke-width: 2;
-    stroke: white;
+    stroke-width: 2.5;
+    stroke: rgba(0, 0, 0, 0.6);
+    filter: drop-shadow(0 1px 3px rgba(0,0,0,0.5));
 }
 
 /* Port indicators */
 .port-indicator {
-    font-size: 9px;
+    font-size: 11px;
+    font-weight: bold;
     fill: var(--accent2);
+    stroke: rgba(0, 0, 0, 0.6);
+    stroke-width: 2.5;
+    paint-order: stroke;
     text-anchor: middle;
     pointer-events: none;
 }

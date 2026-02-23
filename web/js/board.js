@@ -182,13 +182,13 @@ const BoardRenderer = (() => {
             const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
             circle.setAttribute('cx', x);
             circle.setAttribute('cy', y);
-            circle.setAttribute('r', 16);
+            circle.setAttribute('r', 18);
             circle.classList.add('hex-number-bg');
             labelGroup.appendChild(circle);
 
             const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
             text.setAttribute('x', x);
-            text.setAttribute('y', y);
+            text.setAttribute('y', y + 1);
             text.textContent = hex.number_token;
             text.classList.add('hex-number');
             if (hex.number_token === 6 || hex.number_token === 8) {
@@ -201,25 +201,30 @@ const BoardRenderer = (() => {
             if (dots > 0) {
                 const dotsText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                 dotsText.setAttribute('x', x);
-                dotsText.setAttribute('y', y + 12);
+                dotsText.setAttribute('y', y + 14);
                 dotsText.setAttribute('text-anchor', 'middle');
-                dotsText.setAttribute('font-size', '6');
-                dotsText.setAttribute('fill', (hex.number_token === 6 || hex.number_token === 8) ? '#e74c3c' : '#aaa');
-                dotsText.textContent = '•'.repeat(dots);
+                dotsText.setAttribute('font-size', '7');
+                dotsText.setAttribute('fill', (hex.number_token === 6 || hex.number_token === 8) ? '#e74c3c' : '#bbb');
+                dotsText.textContent = '\u2022'.repeat(dots);
                 labelGroup.appendChild(dotsText);
             }
         }
 
-        // Terrain label
-        const terrainText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        terrainText.setAttribute('x', x);
-        terrainText.setAttribute('y', y - (hex.number_token ? 18 : 0));
-        terrainText.setAttribute('text-anchor', 'middle');
-        terrainText.setAttribute('font-size', '8');
-        terrainText.setAttribute('fill', 'rgba(255,255,255,0.5)');
-        terrainText.setAttribute('pointer-events', 'none');
-        terrainText.textContent = hex.terrain;
-        labelGroup.appendChild(terrainText);
+        // Terrain label — with dark outline for readability
+        const terrainY = y - (hex.number_token ? 22 : 0);
+        const terrainLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        terrainLabel.setAttribute('x', x);
+        terrainLabel.setAttribute('y', terrainY);
+        terrainLabel.setAttribute('text-anchor', 'middle');
+        terrainLabel.setAttribute('font-size', '10');
+        terrainLabel.setAttribute('font-weight', 'bold');
+        terrainLabel.setAttribute('fill', 'white');
+        terrainLabel.setAttribute('stroke', 'rgba(0,0,0,0.7)');
+        terrainLabel.setAttribute('stroke-width', '3');
+        terrainLabel.setAttribute('paint-order', 'stroke');
+        terrainLabel.setAttribute('pointer-events', 'none');
+        terrainLabel.textContent = hex.terrain.charAt(0).toUpperCase() + hex.terrain.slice(1);
+        labelGroup.appendChild(terrainLabel);
     }
 
     function getDots(num) {
@@ -343,9 +348,12 @@ const BoardRenderer = (() => {
 
         const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         text.setAttribute('x', x);
-        text.setAttribute('y', y - 14);
+        text.setAttribute('y', y - 16);
         text.classList.add('port-indicator');
-        text.textContent = portConfig.resource ? `${portConfig.ratio}:1 ${portConfig.resource.slice(0, 2)}` : `${portConfig.ratio}:1`;
+        const label = portConfig.resource
+            ? `${portConfig.ratio}:1 ${portConfig.resource.charAt(0).toUpperCase() + portConfig.resource.slice(1, 3)}`
+            : `${portConfig.ratio}:1`;
+        text.textContent = label;
         portGroup.appendChild(text);
     }
 
