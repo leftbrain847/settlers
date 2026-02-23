@@ -18,11 +18,11 @@ const Game = (() => {
     // Connection
     // ---------------------------------------------------------------
 
-    async function createGame(playerName, numAI) {
+    async function createGame(playerName, numAI, settings) {
         const resp = await fetch('/api/games', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ player_name: playerName, num_ai: numAI }),
+            body: JSON.stringify({ player_name: playerName, num_ai: numAI, settings: settings || {} }),
         });
         const data = await resp.json();
         gameId = data.game_id;

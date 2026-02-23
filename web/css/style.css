@@ -93,6 +93,72 @@ body {
     border-color: var(--accent2);
 }
 
+.settings-toggle {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--text-dim);
+    font-size: 0.9em;
+    transition: all 0.2s;
+}
+
+.settings-toggle:hover {
+    border-color: var(--accent2);
+    color: var(--text);
+}
+
+.toggle-arrow {
+    font-size: 0.7em;
+    transition: transform 0.2s;
+}
+
+.toggle-arrow.open {
+    transform: rotate(180deg);
+}
+
+.settings-panel {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.setting-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.setting-group label {
+    color: var(--text-dim);
+    font-size: 0.85em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.setting-group input[type="number"],
+.setting-group select {
+    padding: 8px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--bg-panel);
+    color: var(--text);
+    font-size: 0.9em;
+}
+
+.setting-group input[type="checkbox"] {
+    accent-color: var(--accent2);
+}
+
 .btn {
     padding: 12px 24px;
     border: none;

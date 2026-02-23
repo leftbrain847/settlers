@@ -11,15 +11,32 @@
     const btnStart = document.getElementById('btn-start-game');
     const btnJoin = document.getElementById('btn-join-game');
 
+    // Settings toggle
+    document.getElementById('settings-toggle').addEventListener('click', () => {
+        const panel = document.getElementById('settings-panel');
+        const arrow = document.getElementById('toggle-arrow');
+        const visible = panel.style.display !== 'none';
+        panel.style.display = visible ? 'none' : 'flex';
+        arrow.classList.toggle('open', !visible);
+    });
+
     btnStart.addEventListener('click', async () => {
         const name = document.getElementById('player-name').value || 'Player 1';
         const numAI = parseInt(document.getElementById('num-ai').value);
+
+        // Gather settings
+        const settings = {
+            vp_to_win: parseInt(document.getElementById('setting-vp').value) || 10,
+            board_rings: parseInt(document.getElementById('setting-rings').value) || 3,
+            starting_resources: document.getElementById('setting-starting-res').value,
+            friendly_robber: document.getElementById('setting-friendly-robber').checked,
+        };
 
         btnStart.disabled = true;
         btnStart.textContent = 'Starting...';
 
         try {
-            await Game.createGame(name, numAI);
+            await Game.createGame(name, numAI, settings);
 
             // Switch to game screen and init renderer BEFORE starting
             // so WebSocket state updates can render immediately

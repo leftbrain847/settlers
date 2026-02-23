@@ -21,7 +21,7 @@ from fastapi.responses import FileResponse
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from engine.config import GameConfig
+from engine.config import GameConfig, WinCondition
 from engine.engine import GameEngine
 from engine.actions import Action
 from engine.ai import RandomStrategy, SmartStrategy, AIStrategy
@@ -40,6 +40,7 @@ class GameManager:
         self.ai_players: dict[str, dict[str, AIStrategy]] = {}  # game_id -> {player_id -> strategy}
         self.connections: dict[str, dict[str, WebSocket]] = {}  # game_id -> {player_id -> ws}
         self.ai_flags: dict[str, set[str]] = {}  # game_id -> set of AI player_ids
+        self.game_settings: dict[str, dict] = {}  # game_id -> settings dict
 
     def create_game(self, config: Optional[GameConfig] = None) -> GameEngine:
         cfg = config or load_base_game()
@@ -71,7 +72,32 @@ manager = GameManager()
 @app.post("/api/games")
 async def create_game(body: dict = None):
     body = body or {}
-    engine = manager.create_game()
+    settings = body.get("settings", {})
+
+    # Apply settings to config
+    config = load_base_game()
+
+    if settings.get("vp_to_win"):
+        vp = int(settings["vp_to_win"])
+        config.win_conditions = [WinCondition(type="vp_threshold", params={"threshold": vp})]
+
+    if settings.get("board_rings") and int(settings["board_rings"]) != 3:
+        rings = int(settings["board_rings"])
+        config.board_template.num_rings = rings
+        # Adjust terrain counts for smaller/larger boards
+        if rings == 2:
+            config.board_template.terrain_counts = {
+                "hills": 1, "forest": 2, "mountains": 1,
+                "fields": 1, "pasture": 1, "desert": 1,
+            }
+            config.board_template.number_tokens = [3, 4, 5, 6, 8, 9]
+            config.board_template.port_counts = {"generic": 2, "brick_port": 1, "lumber_port": 1}
+
+    if settings.get("friendly_robber"):
+        config.robber.friendly_turns = 3  # store for engine to use
+
+    engine = manager.create_game(config)
+    manager.game_settings[engine.state.game_id] = settings
 
     num_ai = body.get("num_ai", 0)
     player_name = body.get("player_name", "Player 1")
@@ -117,6 +143,18 @@ async def start_game(game_id: str):
         events = engine.start_game()
     except ValueError as e:
         raise HTTPException(400, str(e))
+
+    # Apply starting resources if configured
+    settings = manager.game_settings.get(game_id, {})
+    starting_res = settings.get("starting_resources", "none")
+    if starting_res != "none":
+        import random
+        res_types = list(engine.config.resource_types.keys())
+        count = 5 if starting_res == "some" else 10
+        for pid, player in engine.state.players.items():
+            for _ in range(count):
+                res = random.choice(res_types)
+                player.resources[res] = player.resources.get(res, 0) + 1
 
     # Broadcast to all connected players
     await broadcast_state(game_id)

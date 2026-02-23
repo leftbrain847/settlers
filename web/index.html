@@ -22,9 +22,43 @@
         <label for="num-ai">AI Opponents</label>
         <select id="num-ai">
             <option value="1">1 Bot</option>
-            <option value="2">2 Bots</option>
-            <option value="3" selected>3 Bots</option>
+            <option value="2" selected>2 Bots</option>
+            <option value="3">3 Bots</option>
         </select>
+
+        <!-- Game Settings Toggle -->
+        <div class="settings-toggle" id="settings-toggle">
+            <span>Game Settings</span>
+            <span class="toggle-arrow" id="toggle-arrow">&#9660;</span>
+        </div>
+
+        <div class="settings-panel" id="settings-panel" style="display:none;">
+            <div class="setting-group">
+                <label>Victory Points to Win</label>
+                <input type="number" id="setting-vp" value="10" min="5" max="20">
+            </div>
+            <div class="setting-group">
+                <label>Board Size (rings)</label>
+                <select id="setting-rings">
+                    <option value="2">Small (2 rings, 7 hexes)</option>
+                    <option value="3" selected>Standard (3 rings, 19 hexes)</option>
+                </select>
+            </div>
+            <div class="setting-group">
+                <label>Starting Resources</label>
+                <select id="setting-starting-res">
+                    <option value="none" selected>None (standard)</option>
+                    <option value="some">5 random resources</option>
+                    <option value="plenty">10 random resources</option>
+                </select>
+            </div>
+            <div class="setting-group">
+                <label>
+                    <input type="checkbox" id="setting-friendly-robber">
+                    Friendly Robber (no stealing first 3 turns)
+                </label>
+            </div>
+        </div>
 
         <button class="btn btn-primary" id="btn-start-game">Start Game</button>
 
