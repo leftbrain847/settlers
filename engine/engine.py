@@ -528,9 +528,11 @@ class GameEngine:
         if self.config.trade_rules.player_trading_enabled:
             legal.append({"type": "trade_offer"})
 
-        # Dev cards
+        # Dev cards (can't play cards bought this turn)
         if not player.has_played_dev_card_this_turn:
-            for card in set(player.dev_cards):
+            playable_cards = [c for c in player.dev_cards
+                              if c not in player.dev_cards_bought_this_turn]
+            for card in set(playable_cards):
                 dc = self.config.dev_card_types.get(card)
                 if dc and dc.playable and not dc.is_victory_point:
                     legal.append({"type": "play_dev_card", "card_type": card})

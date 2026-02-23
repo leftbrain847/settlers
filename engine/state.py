@@ -83,6 +83,8 @@ class PlayerState:
     achievements: list[str] = field(default_factory=list)
     # Has played a dev card this turn?
     has_played_dev_card_this_turn: bool = False
+    # Dev cards bought this turn (can't be played same turn)
+    dev_cards_bought_this_turn: list[str] = field(default_factory=list)
     # VP from dev cards (hidden until game end in standard rules)
     hidden_vp: int = 0
     # Ports this player has access to (port_type ids)

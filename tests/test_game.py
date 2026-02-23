@@ -401,6 +401,64 @@ def test_bank_trade_with_ports():
     assert result.success
 
 
+def test_dev_card_same_turn_rule():
+    """Dev cards cannot be played the same turn they are bought."""
+    config = load_base_game()
+    engine = GameEngine(config)
+
+    p1 = engine.add_player("Alice")
+    p2 = engine.add_player("Bob")
+    engine.start_game(seed=42)
+    ai = RandomStrategy()
+    _run_setup(engine, ai)
+
+    # Set up: give player resources to buy a dev card
+    player = engine.state.get_player(p1)
+    player.resources = {"ore": 5, "grain": 5, "wool": 5, "brick": 5, "lumber": 5}
+
+    # Force p1's turn and roll dice
+    engine.state.current_player_idx = engine.state.player_order.index(p1)
+    engine.state.dice_rolled = True
+
+    # Buy a dev card
+    result = engine.do_action(Action(type="buy_dev_card", player_id=p1, params={}))
+    assert result.success, "Should be able to buy dev card"
+
+    bought_card = player.dev_cards_bought_this_turn[-1]
+    dc = config.dev_card_types.get(bought_card)
+
+    # If the card is playable (not a VP card), trying to play it should fail
+    if dc and dc.playable and not dc.is_victory_point:
+        result = engine.do_action(Action(
+            type="play_dev_card", player_id=p1,
+            params={"card_type": bought_card}
+        ))
+        assert not result.success, "Should NOT be able to play dev card same turn it was bought"
+        assert "same turn" in result.error.lower()
+
+    # Verify it also doesn't appear in legal actions
+    legal = engine.get_legal_actions(p1)
+    playable = [a for a in legal if a["type"] == "play_dev_card"
+                and a["card_type"] == bought_card]
+    if dc and dc.playable and not dc.is_victory_point:
+        assert len(playable) == 0, "Same-turn card should not appear in legal actions"
+
+    # End turn, then it should be playable on the next turn
+    engine.do_action(Action(type="end_turn", player_id=p1, params={}))
+
+    # Now it's p2's turn - advance back to p1
+    engine.state.dice_rolled = True
+    engine.do_action(Action(type="end_turn", player_id=p2, params={}))
+    engine.state.dice_rolled = True
+
+    # Now p1 should be able to play the card
+    if dc and dc.playable and not dc.is_victory_point:
+        legal = engine.get_legal_actions(p1)
+        playable = [a for a in legal if a["type"] == "play_dev_card"
+                    and a["card_type"] == bought_card]
+        assert len(playable) > 0, "Should be able to play dev card on next turn"
+
+
 if __name__ == "__main__":
     test_full_game_simulation()
     print("test_full_game_simulation passed")
@@ -424,4 +482,6 @@ if __name__ == "__main__":
     print("test_distance_rule passed")
     test_bank_trade_with_ports()
     print("test_bank_trade_with_ports passed")
+    test_dev_card_same_turn_rule()
+    print("test_dev_card_same_turn_rule passed")
     print("\nAll tests passed!")

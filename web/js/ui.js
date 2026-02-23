@@ -20,6 +20,46 @@
         arrow.classList.toggle('open', !visible);
     });
 
+    // Helper: enter game screen after create/join
+    async function enterGame(gid) {
+        document.getElementById('lobby').style.display = 'none';
+        document.getElementById('game').classList.add('active');
+        document.getElementById('game-id-display').textContent = `ID: ${gid}`;
+        BoardRenderer.init(document.getElementById('board-svg'));
+        await Game.connectWebSocket(onGameUpdate);
+    }
+
+    // Helper: build a shareable join URL
+    async function getJoinUrl(gid) {
+        // Try to get the public URL from the server (set when using --share)
+        try {
+            const resp = await fetch('/api/server-info');
+            const info = await resp.json();
+            if (info.public_url) {
+                return `${info.public_url}?join=${gid}`;
+            }
+        } catch (e) { /* ignore */ }
+        return `${location.origin}?join=${gid}`;
+    }
+
+    // Helper: show a copy-link banner after game creation
+    async function showJoinLink(gid) {
+        const url = await getJoinUrl(gid);
+        const display = document.getElementById('game-id-display');
+        display.innerHTML = '';
+        const link = document.createElement('span');
+        link.textContent = `ID: ${gid}`;
+        link.style.cursor = 'pointer';
+        link.title = 'Click to copy join link';
+        link.addEventListener('click', () => {
+            navigator.clipboard.writeText(url).then(() => {
+                link.textContent = 'Link copied!';
+                setTimeout(() => { link.textContent = `ID: ${gid}`; }, 2000);
+            });
+        });
+        display.appendChild(link);
+    }
+
     btnStart.addEventListener('click', async () => {
         const name = document.getElementById('player-name').value || 'Player 1';
         const numAI = parseInt(document.getElementById('num-ai').value);
@@ -37,18 +77,9 @@
 
         try {
             await Game.createGame(name, numAI, settings);
-
-            // Switch to game screen and init renderer BEFORE starting
-            // so WebSocket state updates can render immediately
-            document.getElementById('lobby').style.display = 'none';
-            document.getElementById('game').classList.add('active');
-            document.getElementById('game-id-display').textContent = `ID: ${Game.getGameId()}`;
-            BoardRenderer.init(document.getElementById('board-svg'));
-
-            await Game.connectWebSocket(onGameUpdate);
+            await enterGame(Game.getGameId());
+            await showJoinLink(Game.getGameId());
             await Game.startGame();
-
-            // Re-render in case state arrived before WebSocket onmessage fired
             renderAll();
         } catch (e) {
             console.error(e);
@@ -64,17 +95,28 @@
 
         try {
             await Game.joinGame(gid, name);
-
-            document.getElementById('lobby').style.display = 'none';
-            document.getElementById('game').classList.add('active');
-            document.getElementById('game-id-display').textContent = `ID: ${gid}`;
-            BoardRenderer.init(document.getElementById('board-svg'));
-
-            await Game.connectWebSocket(onGameUpdate);
+            await enterGame(gid);
         } catch (e) {
             console.error(e);
         }
     });
+
+    // Auto-join from URL parameter: ?join=GAME_ID
+    (async function checkUrlJoin() {
+        const params = new URLSearchParams(location.search);
+        const joinId = params.get('join');
+        if (!joinId) return;
+
+        // Pre-fill the game ID and show a join prompt
+        document.getElementById('join-game-id').value = joinId;
+        // Auto-focus the name field so the user just types their name and clicks join
+        document.getElementById('player-name').focus();
+        document.getElementById('player-name').placeholder = 'Enter your name to join';
+
+        // Visual hint that we're joining a specific game
+        const subtitle = document.querySelector('.subtitle');
+        if (subtitle) subtitle.textContent = `Joining game ${joinId.slice(0, 8)}...`;
+    })();
 
     // ---------------------------------------------------------------
     // Game update handler

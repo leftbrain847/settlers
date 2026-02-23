@@ -166,7 +166,7 @@ def _score_intersection(engine: GameEngine, iid: int) -> float:
 class SmartStrategy(AIStrategy):
     """
     Rule-based AI that plays a reasonable game of Catan.
-    Prioritizes: cities > settlements > roads toward good spots > dev cards.
+    Plans toward specific goals and spends resources efficiently.
     Keeps the AIStrategy interface clean for future RL replacement.
     """
 
@@ -182,7 +182,7 @@ class SmartStrategy(AIStrategy):
         for a in legal:
             by_type.setdefault(a["type"], []).append(a)
 
-        # Must-do actions first
+        # Must-do actions first (forced moves)
         for must_do in ("roll_dice", "move_robber", "steal", "discard", "dev_card_action"):
             if must_do in by_type:
                 if must_do == "move_robber":
@@ -192,59 +192,71 @@ class SmartStrategy(AIStrategy):
                 return self._fallback._legal_to_action(
                     random.choice(by_type[must_do]), player_id)
 
-        # Building priority: city > settlement > road (with smarts)
-        if "build" in by_type:
-            builds = by_type["build"]
-            cities = [a for a in builds if a.get("building_type") == "city"]
-            settlements = [a for a in builds if a.get("building_type") == "settlement"]
-            roads = [a for a in builds if a.get("building_type") == "road"]
+        player = engine.state.get_player(player_id)
 
-            # Always build cities first (best ROI)
-            if cities:
-                best = max(cities, key=lambda a: _score_intersection(engine, a["location"]))
-                return self._fallback._legal_to_action(best, player_id)
-
-            # Build settlements on best production spots
-            if settlements:
-                best = max(settlements, key=lambda a: _score_intersection(engine, a["location"]))
-                return self._fallback._legal_to_action(best, player_id)
-
-            # Only build roads if they lead toward valid settlement spots
-            if roads:
-                chosen = self._choose_road(engine, player_id, roads)
-                # Check if chosen road actually leads somewhere useful
-                if chosen and self._road_has_value(engine, player_id, chosen):
-                    return self._fallback._legal_to_action(chosen, player_id)
-                # Otherwise skip road building — save resources for cities/dev cards
-
-        # Play dev cards if beneficial (before buying more)
+        # Play dev cards early (before building) for knight/robber advantage
         if "play_dev_card" in by_type:
             chosen = random.choice(by_type["play_dev_card"])
             return self._fallback._legal_to_action(chosen, player_id)
 
-        # Buy dev cards — good source of VP and knights
-        if "buy_dev_card" in by_type:
-            player = engine.state.get_player(player_id)
-            total_res = sum(player.resources.values())
-            # Buy if we have surplus resources or no other building options
-            has_build_options = any(a.get("building_type") in ("settlement", "city")
-                                   for a in by_type.get("build", []))
-            if not has_build_options or total_res >= 5 or random.random() < 0.4:
-                return self._fallback._legal_to_action(by_type["buy_dev_card"][0], player_id)
+        # Determine what we can build right now
+        builds = by_type.get("build", [])
+        cities = [a for a in builds if a.get("building_type") == "city"]
+        settlements = [a for a in builds if a.get("building_type") == "settlement"]
+        roads = [a for a in builds if a.get("building_type") == "road"]
 
-        # Strategic bank trading — trade surplus for what we need
+        # Determine our strategic goal based on current position
+        settlement_count = player.buildings_placed.get("settlement", 0)
+        city_count = player.buildings_placed.get("city", 0)
+        road_count = player.buildings_placed.get("road", 0)
+
+        # Phase 1: Always upgrade to cities first (3 ore + 2 grain -> 1 extra VP)
+        if cities:
+            best = max(cities, key=lambda a: _score_intersection(engine, a["location"]))
+            return self._fallback._legal_to_action(best, player_id)
+
+        # Phase 2: Build settlements on the best spots
+        if settlements:
+            best = max(settlements, key=lambda a: _score_intersection(engine, a["location"]))
+            return self._fallback._legal_to_action(best, player_id)
+
+        # Phase 3: Expand road network toward good settlement spots
+        # More aggressive about road building when we need to reach new spots
+        if roads:
+            chosen = self._choose_road(engine, player_id, roads)
+            if chosen and self._road_has_value(engine, player_id, chosen):
+                # Build roads more often: expand to reach new settlement spots
+                # Especially if we have few settlements
+                if settlement_count < 4 or road_count < 5:
+                    return self._fallback._legal_to_action(chosen, player_id)
+                # Even mid-game, build roads if there's a good spot nearby
+                elif random.random() < 0.6:
+                    return self._fallback._legal_to_action(chosen, player_id)
+
+        # Phase 4: Trade with bank to complete builds BEFORE buying dev cards
+        # This is critical - bots should trade surplus to finish buildings
         if "trade_bank" in by_type:
             trade = self._choose_bank_trade(engine, player_id, by_type["trade_bank"])
             if trade:
                 return self._fallback._legal_to_action(trade, player_id)
 
-        # Build road as last resort (if we skipped it earlier but have nothing else to do)
-        if "build" in by_type:
-            roads = [a for a in by_type["build"] if a.get("building_type") == "road"]
-            if roads and random.random() < 0.2:
-                chosen = self._choose_road(engine, player_id, roads)
-                if chosen:
-                    return self._fallback._legal_to_action(chosen, player_id)
+        # Phase 5: Buy dev cards only when no better option exists
+        if "buy_dev_card" in by_type:
+            total_res = sum(player.resources.values())
+            # Only buy dev cards when we truly can't do anything else productive,
+            # or when we're close to largest army
+            knights_played = sum(1 for c in player.played_dev_cards
+                                if engine.config.dev_card_types.get(c, None) and
+                                engine.config.dev_card_types[c].persistent_tag == "knight")
+            close_to_army = knights_played >= 1  # already working toward largest army
+            if close_to_army or total_res >= 7 or (not roads and not settlements and not cities):
+                return self._fallback._legal_to_action(by_type["buy_dev_card"][0], player_id)
+
+        # Build any road if we have nothing else to do and resources to spare
+        if roads:
+            chosen = self._choose_road(engine, player_id, roads)
+            if chosen:
+                return self._fallback._legal_to_action(chosen, player_id)
 
         # End turn
         if "end_turn" in by_type:
@@ -348,15 +360,27 @@ class SmartStrategy(AIStrategy):
 
     def _choose_bank_trade(self, engine: GameEngine, player_id: str,
                             trades: list) -> Optional[dict]:
-        """Choose a bank trade that helps us toward a goal (dev card or city)."""
-        player = engine.state.get_player(player_id)
+        """Choose a bank trade that helps us toward a goal.
 
-        # Determine what we need most — prioritize city, then dev card, then settlement
-        goals = [
-            {"ore": 3, "grain": 2},           # city
-            {"ore": 1, "grain": 1, "wool": 1},  # dev card
-            {"brick": 1, "lumber": 1, "grain": 1, "wool": 1},  # settlement
-        ]
+        Priority: city > settlement > road > dev card.
+        More aggressive: will trade even if it only gets us closer (not just 1 away).
+        """
+        player = engine.state.get_player(player_id)
+        settlement_count = player.buildings_placed.get("settlement", 0)
+        city_count = player.buildings_placed.get("city", 0)
+
+        # Build goal list based on current game state
+        goals = []
+        # Cities are always highest priority if we have settlements to upgrade
+        if settlement_count > 0:
+            goals.append({"ore": 3, "grain": 2})
+        # Settlements if we have room to expand
+        if settlement_count + city_count < 5:
+            goals.append({"brick": 1, "lumber": 1, "grain": 1, "wool": 1})
+        # Road if we need to reach new spots
+        goals.append({"brick": 1, "lumber": 1})
+        # Dev card as fallback
+        goals.append({"ore": 1, "grain": 1, "wool": 1})
 
         for goal in goals:
             # Find resources we're missing for this goal
@@ -370,13 +394,30 @@ class SmartStrategy(AIStrategy):
                 continue  # We can already afford this, skip
 
             # Find trades that give us a missing resource
-            for want_res in missing:
+            # Sort missing by deficit (smallest first - closest to completing)
+            for want_res in sorted(missing, key=lambda r: missing[r]):
                 matching = [t for t in trades if t["want_resource"] == want_res]
                 if matching:
                     # Prefer trading away resources we have the most of
-                    best_trade = max(matching,
-                                     key=lambda t: player.resources.get(t["give_resource"], 0))
-                    return best_trade
+                    # and that aren't needed for this goal
+                    def trade_value(t):
+                        give_res = t["give_resource"]
+                        surplus = player.resources.get(give_res, 0)
+                        # Penalize trading away resources we need for this goal
+                        if give_res in goal:
+                            surplus -= goal[give_res]
+                        return surplus
+                    best_trade = max(matching, key=trade_value)
+                    # Only trade if we actually have surplus of the give resource
+                    if trade_value(best_trade) > 0:
+                        return best_trade
+
+        # Last resort: if we have a lot of one resource (7+), trade it for anything useful
+        total = sum(player.resources.values())
+        if total >= 7:
+            for t in trades:
+                if player.resources.get(t["give_resource"], 0) >= 5:
+                    return t
 
         return None
 

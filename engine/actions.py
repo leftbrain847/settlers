@@ -300,6 +300,10 @@ def validate_play_dev_card(state: GameState, config: GameConfig, action: Action)
     if player.has_played_dev_card_this_turn:
         return False, "Already played a dev card this turn"
 
+    # Can't play a dev card the same turn it was bought
+    if card_type in player.dev_cards_bought_this_turn:
+        return False, "Cannot play a dev card the same turn you bought it"
+
     return True, ""
 
 

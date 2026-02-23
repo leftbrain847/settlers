@@ -220,12 +220,13 @@ def handle_buy_dev_card(state: GameState, config: GameConfig, player_id: str,
     card_type_id = state.dev_card_deck.pop(0)
     dc = config.dev_card_types[card_type_id]
 
+    player.dev_cards.append(card_type_id)
+    player.dev_cards_bought_this_turn.append(card_type_id)
+
     if dc.is_victory_point:
         player.hidden_vp += 1
-        player.dev_cards.append(card_type_id)
         events.append({"type": "dev_card_bought", "player": player_id, "card": card_type_id, "is_vp": True})
     else:
-        player.dev_cards.append(card_type_id)
         events.append({"type": "dev_card_bought", "player": player_id, "card": card_type_id, "is_vp": False})
 
     state.add_log("buy_dev_card", player=player_id)
@@ -563,6 +564,7 @@ def handle_end_turn(state: GameState, config: GameConfig, player_id: str,
     state.trade_offers.clear()
     player = state.get_player(player_id)
     player.has_played_dev_card_this_turn = False
+    player.dev_cards_bought_this_turn.clear()
 
     # Advance to next player
     state.current_player_idx = (state.current_player_idx + 1) % len(state.player_order)

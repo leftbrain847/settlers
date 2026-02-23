@@ -439,7 +439,33 @@ async def index():
 app.mount("/static", StaticFiles(directory=web_dir), name="static")
 
 
+@app.get("/api/server-info")
+async def server_info():
+    """Return the public URL if running with --share, for join link generation."""
+    return {"public_url": os.environ.get("PUBLIC_URL", "")}
+
+
 if __name__ == "__main__":
+    import argparse
     import uvicorn
-    port = int(os.environ.get("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+
+    parser = argparse.ArgumentParser(description="Settlers game server")
+    parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", 8000)))
+    parser.add_argument("--share", action="store_true",
+                        help="Create a public tunnel so friends can join via URL")
+    args = parser.parse_args()
+
+    if args.share:
+        try:
+            from pyngrok import ngrok
+            public_url = ngrok.connect(args.port, "http").public_url
+            os.environ["PUBLIC_URL"] = public_url
+            print(f"\n{'='*60}")
+            print(f"  PUBLIC URL: {public_url}")
+            print(f"  Share this link with friends to let them join!")
+            print(f"{'='*60}\n")
+        except Exception as e:
+            print(f"Warning: Could not create tunnel: {e}")
+            print("Friends on your local network can still join via your IP address.")
+
+    uvicorn.run(app, host="0.0.0.0", port=args.port)
