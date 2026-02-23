@@ -317,6 +317,7 @@ def handle_dev_card_action(state: GameState, config: GameConfig, player_id: str,
             player.resources[res_id] = player.resources.get(res_id, 0) + amount
         state.pending_action = None
         events.append({"type": "resources_gained", "player": player_id, "resources": resources})
+        state.add_log("dev_card_action", player=player_id, action_type="choose_resources")
 
     elif pa["type"] == "choose_monopoly_resource":
         resource = params.get("resource")
@@ -334,6 +335,7 @@ def handle_dev_card_action(state: GameState, config: GameConfig, player_id: str,
                 total_stolen += amount
         state.pending_action = None
         events.append({"type": "monopoly", "player": player_id, "resource": resource, "stolen": total_stolen})
+        state.add_log("dev_card_action", player=player_id, action_type="choose_monopoly_resource")
 
     elif pa["type"] == "build_free_roads":
         location = params.get("location")

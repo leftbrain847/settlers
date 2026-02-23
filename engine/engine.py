@@ -653,7 +653,8 @@ class GameEngine:
             else:
                 pdata["resource_count"] = sum(p.resources.values())
                 pdata["dev_card_count"] = len(p.dev_cards)
-            pdata["vp"] = s.visible_vp(pid, self.config)
+            # Show full VP (including hidden dev card VP) only to the player themselves
+            pdata["vp"] = s.visible_vp(pid, self.config, include_hidden=(pid == player_id))
             data["players"][pid] = pdata
 
         # Trade offers

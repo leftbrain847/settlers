@@ -192,7 +192,7 @@ class SmartStrategy(AIStrategy):
                 return self._fallback._legal_to_action(
                     random.choice(by_type[must_do]), player_id)
 
-        # Building priority: city > settlement > road
+        # Building priority: city > settlement > road (with smarts)
         if "build" in by_type:
             builds = by_type["build"]
             cities = [a for a in builds if a.get("building_type") == "city"]
@@ -209,23 +209,42 @@ class SmartStrategy(AIStrategy):
                 best = max(settlements, key=lambda a: _score_intersection(engine, a["location"]))
                 return self._fallback._legal_to_action(best, player_id)
 
-            # Build roads toward good open intersections
+            # Only build roads if they lead toward valid settlement spots
             if roads:
                 chosen = self._choose_road(engine, player_id, roads)
-                return self._fallback._legal_to_action(chosen, player_id)
+                # Check if chosen road actually leads somewhere useful
+                if chosen and self._road_has_value(engine, player_id, chosen):
+                    return self._fallback._legal_to_action(chosen, player_id)
+                # Otherwise skip road building — save resources for cities/dev cards
 
         # Play dev cards if beneficial (before buying more)
         if "play_dev_card" in by_type:
             chosen = random.choice(by_type["play_dev_card"])
             return self._fallback._legal_to_action(chosen, player_id)
 
-        # Buy dev cards only sometimes — prefer saving for buildings
+        # Buy dev cards — good source of VP and knights
         if "buy_dev_card" in by_type:
             player = engine.state.get_player(player_id)
-            # Only buy if we have decent resources and some randomness
             total_res = sum(player.resources.values())
-            if total_res >= 5 or random.random() < 0.3:
+            # Buy if we have surplus resources or no other building options
+            has_build_options = any(a.get("building_type") in ("settlement", "city")
+                                   for a in by_type.get("build", []))
+            if not has_build_options or total_res >= 5 or random.random() < 0.4:
                 return self._fallback._legal_to_action(by_type["buy_dev_card"][0], player_id)
+
+        # Strategic bank trading — trade surplus for what we need
+        if "trade_bank" in by_type:
+            trade = self._choose_bank_trade(engine, player_id, by_type["trade_bank"])
+            if trade:
+                return self._fallback._legal_to_action(trade, player_id)
+
+        # Build road as last resort (if we skipped it earlier but have nothing else to do)
+        if "build" in by_type:
+            roads = [a for a in by_type["build"] if a.get("building_type") == "road"]
+            if roads and random.random() < 0.2:
+                chosen = self._choose_road(engine, player_id, roads)
+                if chosen:
+                    return self._fallback._legal_to_action(chosen, player_id)
 
         # End turn
         if "end_turn" in by_type:
@@ -326,6 +345,99 @@ class SmartStrategy(AIStrategy):
                 best = a
 
         return best or random.choice(roads)
+
+    def _choose_bank_trade(self, engine: GameEngine, player_id: str,
+                            trades: list) -> Optional[dict]:
+        """Choose a bank trade that helps us toward a goal (dev card or city)."""
+        player = engine.state.get_player(player_id)
+
+        # Determine what we need most — prioritize city, then dev card, then settlement
+        goals = [
+            {"ore": 3, "grain": 2},           # city
+            {"ore": 1, "grain": 1, "wool": 1},  # dev card
+            {"brick": 1, "lumber": 1, "grain": 1, "wool": 1},  # settlement
+        ]
+
+        for goal in goals:
+            # Find resources we're missing for this goal
+            missing = {}
+            for res, need in goal.items():
+                deficit = need - player.resources.get(res, 0)
+                if deficit > 0:
+                    missing[res] = deficit
+
+            if not missing:
+                continue  # We can already afford this, skip
+
+            # Find trades that give us a missing resource
+            for want_res in missing:
+                matching = [t for t in trades if t["want_resource"] == want_res]
+                if matching:
+                    # Prefer trading away resources we have the most of
+                    best_trade = max(matching,
+                                     key=lambda t: player.resources.get(t["give_resource"], 0))
+                    return best_trade
+
+        return None
+
+    def _road_has_value(self, engine: GameEngine, player_id: str, road_action: dict) -> bool:
+        """Check if building a road leads toward a valid, reachable settlement spot."""
+        state = engine.state
+        board = state.board
+        player = state.get_player(player_id)
+
+        # If we already have max roads, no value
+        road_count = player.buildings_placed.get("road", 0)
+        if road_count >= 13:  # Save last couple roads for when we find a spot
+            return False
+
+        eid = road_action["location"]
+        edge = board.edges.get(eid)
+        if not edge:
+            return False
+
+        # Check if either endpoint is a valid settlement spot (or leads toward one
+        # within 2 hops)
+        ia, ib = edge.intersection_ids
+        for start_iid in (ia, ib):
+            if self._has_nearby_settlement_spot(engine, player_id, start_iid, depth=2):
+                return True
+
+        return False
+
+    def _has_nearby_settlement_spot(self, engine: GameEngine, player_id: str,
+                                     start_iid: int, depth: int) -> bool:
+        """BFS to find a valid settlement spot within `depth` hops."""
+        board = engine.state.board
+        visited = {start_iid}
+        frontier = [start_iid]
+
+        for _ in range(depth):
+            next_frontier = []
+            for iid in frontier:
+                for adj_iid in board.adjacent_intersections.get(iid, []):
+                    if adj_iid in visited:
+                        continue
+                    visited.add(adj_iid)
+                    inter = board.intersections.get(adj_iid)
+                    if not inter:
+                        continue
+                    # Check if this is a valid settlement spot
+                    if inter.building is not None:
+                        continue  # Occupied
+                    # Distance rule: no adjacent buildings
+                    too_close = False
+                    for neighbor_iid in board.adjacent_intersections.get(adj_iid, []):
+                        neighbor = board.intersections.get(neighbor_iid)
+                        if neighbor and neighbor.building is not None:
+                            too_close = True
+                            break
+                    if not too_close:
+                        return True  # Found a valid spot
+                    next_frontier.append(adj_iid)
+            frontier = next_frontier
+
+        return False
 
     def choose_discard(self, engine: GameEngine, player_id: str, count: int) -> dict[str, int]:
         """Discard resources we have the most of, keeping diverse ones."""

@@ -189,8 +189,14 @@ class GameState:
     def total_resources(self, player_id: str) -> int:
         return sum(self.players[player_id].resources.values())
 
-    def visible_vp(self, player_id: str, config) -> int:
-        """Calculate visible victory points for a player."""
+    def visible_vp(self, player_id: str, config, include_hidden: bool = True) -> int:
+        """Calculate victory points for a player.
+
+        Args:
+            include_hidden: If True, includes VP from hidden dev cards.
+                Use True for win-condition checks and for the owning player's UI.
+                Use False when showing VP to opponents (they shouldn't see hidden VP cards).
+        """
         player = self.players[player_id]
         vp = 0
         # VP from buildings on board
@@ -204,6 +210,7 @@ class GameState:
             ach = config.achievements.get(ach_id)
             if ach:
                 vp += ach.vp
-        # Hidden VP (dev card VPs) — only counted at game end / for the owning player
-        vp += player.hidden_vp
+        # Hidden VP (dev card VPs) — only included for owner / win checks
+        if include_hidden:
+            vp += player.hidden_vp
         return vp
