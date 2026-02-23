@@ -412,6 +412,12 @@ class GameEngine:
                         road_type = bt
                         break
                 if road_type:
+                    # Check if player has reached max roads
+                    placed = player.buildings_placed.get(road_type.id, 0)
+                    if placed >= road_type.max_per_player:
+                        # No more roads can be placed — clear the pending action
+                        legal.append({"type": "dev_card_action", "location": -1, "skip": True})
+                        return legal
                     for eid, edge in self.state.board.edges.items():
                         if edge.building:
                             continue

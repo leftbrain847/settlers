@@ -185,7 +185,8 @@ def _generate_hex_positions(num_rings: int) -> list[tuple[int, int]]:
     """Generate hex positions in axial coordinates for a board with N rings."""
     positions = [(0, 0)]  # center
     for ring in range(1, num_rings):
-        q, r = 0, -ring  # start at top
+        # Start at direction[4] scaled by ring = (-ring, ring)
+        q, r = -ring, ring
         for direction in range(6):
             dq, dr = HEX_DIRECTIONS[direction]
             for _ in range(ring):

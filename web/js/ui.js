@@ -198,8 +198,10 @@
             // Free roads from road building card
             const pendingAction = state ? state.pending_action : null;
             if (pendingAction && pendingAction.type === 'build_free_roads') {
-                const roadLocs = Game.getLegalBuildLocations('road');
-                if (roadLocs.includes(eid)) {
+                const freeRoadLocs = Game.getLegalActions()
+                    .filter(a => a.type === 'dev_card_action' && a.location >= 0)
+                    .map(a => a.location);
+                if (freeRoadLocs.includes(eid)) {
                     Game.devCardAction({ location: eid });
                 }
             }
@@ -420,15 +422,15 @@
             addInfoText(container, 'Choose a resource for Monopoly (see popup)');
         }
         else if (pa.type === 'build_free_roads') {
-            const roadLocs = Game.getLegalBuildLocations('road');
+            // Free road legal locations come as dev_card_action with location field
+            const freeRoadActions = Game.getLegalActions().filter(a => a.type === 'dev_card_action' && a.location >= 0);
+            const roadLocs = freeRoadActions.map(a => a.location);
             addInfoText(container, `Place free road (${pa.remaining} remaining) — click an edge`);
             if (roadLocs.length > 0) {
                 BoardRenderer.highlightEdges(roadLocs);
-            }
-            // For free roads, check the general legal actions for dev_card_action type
-            const freeRoadActions = Game.getLegalActions().filter(a => a.type === 'dev_card_action');
-            if (freeRoadActions.length > 0) {
-                addInfoText(container, 'Click an edge on the board to place your free road');
+            } else {
+                addInfoText(container, 'No legal road locations — skipping remaining free roads');
+                Game.devCardAction({ location: -1, skip: true });
             }
         }
     }

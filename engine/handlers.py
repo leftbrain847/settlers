@@ -346,18 +346,34 @@ def handle_dev_card_action(state: GameState, config: GameConfig, player_id: str,
             state.pending_action = None
             return events
 
+        # If skip flag set (max roads reached) or no legal locations, end early
+        if params.get("skip") or location == -1:
+            state.pending_action = None
+            events.append({"type": "free_roads_skipped", "player": player_id, "reason": "max_roads"})
+            return events
+
+        # Check max roads
+        player = state.get_player(player_id)
+        placed = player.buildings_placed.get(road_type.id, 0)
+        if placed >= road_type.max_per_player:
+            state.pending_action = None
+            events.append({"type": "free_roads_skipped", "player": player_id, "reason": "max_roads"})
+            return events
+
         edge = state.board.edges.get(location)
         if not edge or edge.building:
             return [{"type": "error", "message": "Invalid road location"}]
 
         edge.building = PlacedBuilding(building_type=road_type.id, player_id=player_id)
-        player = state.get_player(player_id)
         player.buildings_placed[road_type.id] = player.buildings_placed.get(road_type.id, 0) + 1
 
         pa["remaining"] -= 1
         events.append({"type": "free_road_built", "player": player_id, "location": location})
 
-        if pa["remaining"] <= 0:
+        # Check if max roads reached after this placement
+        if player.buildings_placed.get(road_type.id, 0) >= road_type.max_per_player:
+            state.pending_action = None
+        elif pa["remaining"] <= 0:
             state.pending_action = None
 
     state.add_log("dev_card_action", player=player_id, action_type=pa["type"] if pa else "unknown")

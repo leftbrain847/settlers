@@ -49,8 +49,28 @@ const BoardRenderer = (() => {
         return { x, y };
     }
 
-    // Intersection position (fractional axial -> pixel)
-    function intersectionToPixel(q, r) {
+    // Intersection pixel positions — computed from hex corners during render
+    let intersectionPixels = {};
+
+    function buildIntersectionPixels(boardState) {
+        intersectionPixels = {};
+        const hexes = boardState.hexes || {};
+        const hexIntersections = boardState.hex_intersections || {};
+        for (const [hid, hex] of Object.entries(hexes)) {
+            const center = hexToPixel(hex.q, hex.r);
+            const corners = hexCorners(center.x, center.y);
+            const iids = hexIntersections[String(hid)] || hexIntersections[hid] || [];
+            for (let i = 0; i < iids.length && i < corners.length; i++) {
+                intersectionPixels[iids[i]] = corners[i];
+            }
+        }
+    }
+
+    function intersectionToPixel(q, r, iid) {
+        if (iid !== undefined && intersectionPixels[iid]) {
+            return intersectionPixels[iid];
+        }
+        // Fallback (shouldn't be needed after buildIntersectionPixels)
         const x = HEX_SIZE * (SQRT3 * q + SQRT3 / 2 * r);
         const y = HEX_SIZE * (3 / 2 * r);
         return { x, y };
@@ -95,6 +115,9 @@ const BoardRenderer = (() => {
         const intersections = boardState.intersections || {};
         const edges = boardState.edges || {};
 
+        // Build intersection pixel lookup from hex corners
+        buildIntersectionPixels(boardState);
+
         // Draw hexes
         for (const [hid, hex] of Object.entries(hexes)) {
             drawHex(hex, callbacks);
@@ -103,7 +126,7 @@ const BoardRenderer = (() => {
         // Draw ports
         for (const [iid, inter] of Object.entries(intersections)) {
             if (inter.port) {
-                drawPort(inter, config);
+                drawPort(iid, inter, config);
             }
         }
 
@@ -123,6 +146,18 @@ const BoardRenderer = (() => {
                 drawRobber(hex);
             }
         }
+
+        // Auto-fit viewBox to board content
+        fitViewBox();
+    }
+
+    function fitViewBox() {
+        if (!svg) return;
+        const bbox = svg.getBBox();
+        if (bbox.width === 0 || bbox.height === 0) return;
+        const pad = 30;
+        svg.setAttribute('viewBox',
+            `${bbox.x - pad} ${bbox.y - pad} ${bbox.width + pad * 2} ${bbox.height + pad * 2}`);
     }
 
     function drawHex(hex, callbacks) {
@@ -193,12 +228,14 @@ const BoardRenderer = (() => {
     }
 
     function drawEdge(eid, edge, intersections, callbacks) {
-        const ia = intersections[String(edge.intersections[0])];
-        const ib = intersections[String(edge.intersections[1])];
+        const aId = edge.intersections[0];
+        const bId = edge.intersections[1];
+        const ia = intersections[String(aId)];
+        const ib = intersections[String(bId)];
         if (!ia || !ib) return;
 
-        const pa = intersectionToPixel(ia.q, ia.r);
-        const pb = intersectionToPixel(ib.q, ib.r);
+        const pa = intersectionToPixel(ia.q, ia.r, aId);
+        const pb = intersectionToPixel(ib.q, ib.r, bId);
 
         const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
         line.setAttribute('x1', pa.x);
@@ -222,11 +259,17 @@ const BoardRenderer = (() => {
     }
 
     function drawIntersection(iid, inter, callbacks) {
-        const { x, y } = intersectionToPixel(inter.q, inter.r);
+        const { x, y } = intersectionToPixel(inter.q, inter.r, parseInt(iid));
 
         if (inter.building) {
-            // Draw building
-            drawBuilding(x, y, inter.building);
+            // Draw building (with click handler for city upgrades)
+            const el = drawBuilding(x, y, inter.building);
+            if (el) {
+                el.dataset.intersectionId = iid;
+                if (callbacks && callbacks.onIntersectionClick) {
+                    el.addEventListener('click', () => callbacks.onIntersectionClick(parseInt(iid)));
+                }
+            }
         } else {
             // Draw clickable empty intersection
             const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
@@ -258,6 +301,7 @@ const BoardRenderer = (() => {
             rect.setAttribute('fill', color);
             rect.classList.add('building-city');
             buildingGroup.appendChild(rect);
+            return rect;
         } else {
             // Settlement = circle
             const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
@@ -267,6 +311,7 @@ const BoardRenderer = (() => {
             circle.setAttribute('fill', color);
             circle.classList.add('building-settlement');
             buildingGroup.appendChild(circle);
+            return circle;
         }
     }
 
@@ -291,8 +336,8 @@ const BoardRenderer = (() => {
         robberGroup.appendChild(head);
     }
 
-    function drawPort(inter, config) {
-        const { x, y } = intersectionToPixel(inter.q, inter.r);
+    function drawPort(iid, inter, config) {
+        const { x, y } = intersectionToPixel(inter.q, inter.r, parseInt(iid));
         const portConfig = config.port_types ? config.port_types[inter.port] : null;
         if (!portConfig) return;
 
@@ -311,7 +356,9 @@ const BoardRenderer = (() => {
     function highlightIntersections(ids) {
         clearHighlights();
         ids.forEach(id => {
-            const el = intersectionGroup.querySelector(`[data-intersection-id="${id}"]`);
+            // Check both empty intersections and buildings (for city upgrades)
+            const el = intersectionGroup.querySelector(`[data-intersection-id="${id}"]`)
+                    || buildingGroup.querySelector(`[data-intersection-id="${id}"]`);
             if (el) el.classList.add('highlight');
         });
     }

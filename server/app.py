@@ -24,7 +24,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from engine.config import GameConfig
 from engine.engine import GameEngine
 from engine.actions import Action
-from engine.ai import RandomStrategy, AIStrategy
+from engine.ai import RandomStrategy, SmartStrategy, AIStrategy
 from definitions.base_game import load_base_game
 
 
@@ -54,7 +54,7 @@ class GameManager:
         return self.games.get(game_id)
 
     def add_ai_player(self, game_id: str, player_id: str, strategy: Optional[AIStrategy] = None):
-        self.ai_players[game_id][player_id] = strategy or RandomStrategy()
+        self.ai_players[game_id][player_id] = strategy or SmartStrategy()
         self.ai_flags[game_id].add(player_id)
 
     def is_ai(self, game_id: str, player_id: str) -> bool:
@@ -222,6 +222,9 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str, player_id: str)
 
                 if result.success:
                     await broadcast_state(game_id)
+                    # Let AI bots respond to trade offers
+                    if data["action_type"] == "trade_offer":
+                        await handle_ai_trade_responses(game_id)
                     await run_ai_turns(game_id)
                 else:
                     await websocket.send_json({"type": "error", "message": result.error})
@@ -261,6 +264,32 @@ async def broadcast_state(game_id: str):
 # ---------------------------------------------------------------------------
 # AI turn execution
 # ---------------------------------------------------------------------------
+
+async def handle_ai_trade_responses(game_id: str):
+    """Let AI players evaluate and respond to active trade offers."""
+    engine = manager.get_game(game_id)
+    if not engine:
+        return
+
+    # Copy trade offers since accepting modifies the dict
+    for tid, offer in list(engine.state.trade_offers.items()):
+        if tid not in engine.state.trade_offers:
+            continue  # Already resolved
+        for pid in engine.state.player_order:
+            if pid == offer.from_player:
+                continue
+            if not manager.is_ai(game_id, pid):
+                continue
+            strategy = manager.ai_players[game_id][pid]
+            if strategy.evaluate_trade(engine, pid, offer.offering, offer.requesting, offer.from_player):
+                action = Action(type="trade_accept", player_id=pid,
+                              params={"trade_id": tid})
+                result = engine.do_action(action)
+                if result.success:
+                    await broadcast_state(game_id)
+                    await asyncio.sleep(0.5)
+                break  # Trade completed, move on
+
 
 async def run_ai_turns(game_id: str):
     """Run AI player turns until it's a human player's turn."""
@@ -330,7 +359,14 @@ async def run_ai_turns(game_id: str):
             break
 
         await broadcast_state(game_id)
-        await asyncio.sleep(0.05)  # small delay for UI effect
+
+        # Longer delay for visible actions so human can follow
+        if action.type in ("roll_dice", "build", "end_turn", "buy_dev_card", "play_dev_card"):
+            await asyncio.sleep(0.8)
+        elif action.type in ("move_robber", "steal"):
+            await asyncio.sleep(0.5)
+        else:
+            await asyncio.sleep(0.2)
 
 
 # ---------------------------------------------------------------------------
