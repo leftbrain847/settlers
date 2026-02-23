@@ -793,39 +793,46 @@ body {
 
 /* Trade modal */
 .trade-modal {
-    max-width: 560px;
+    max-width: 700px;
+    width: 90vw;
+}
+
+.trade-modal h2 {
+    font-size: 1.4em;
+    margin-bottom: 4px;
 }
 
 .trade-hint {
     color: var(--text-dim);
-    font-size: 0.85em;
-    margin-bottom: 12px;
+    font-size: 0.9em;
+    margin-bottom: 14px;
 }
 
 .trade-builder {
     display: flex;
-    gap: 12px;
+    gap: 16px;
     align-items: stretch;
-    margin: 10px 0;
+    margin: 12px 0;
 }
 
 .trade-side {
     flex: 1;
     background: var(--bg);
-    border-radius: 8px;
-    padding: 12px;
-    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    border: 2px solid var(--border);
 }
 
-.trade-give-side { border-color: #c0392b44; }
-.trade-want-side { border-color: #27ae6044; }
+.trade-give-side { border-color: #c0392b55; }
+.trade-want-side { border-color: #27ae6055; }
 
 .trade-side-label {
-    font-size: 0.8em;
+    font-size: 0.9em;
     font-weight: bold;
     text-transform: uppercase;
+    letter-spacing: 0.05em;
     color: var(--text-dim);
-    margin-bottom: 8px;
+    margin-bottom: 10px;
     text-align: center;
 }
 
@@ -835,61 +842,86 @@ body {
 .trade-arrow {
     display: flex;
     align-items: center;
-    font-size: 1.5em;
+    font-size: 1.8em;
     color: var(--text-dim);
 }
 
 .trade-cards {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
+    gap: 8px;
     justify-content: center;
-    min-height: 40px;
+    min-height: 50px;
 }
 
 .trade-res-card {
-    width: 48px;
-    padding: 6px 4px;
-    border-radius: 6px;
+    width: 68px;
+    padding: 10px 6px;
+    border-radius: 8px;
     text-align: center;
     cursor: pointer;
     border: 2px solid var(--border);
     transition: all 0.15s;
     user-select: none;
+    position: relative;
 }
 
 .trade-res-card:hover {
-    border-color: var(--accent2);
     transform: translateY(-2px);
+    filter: brightness(1.15);
 }
 
 .trade-res-card .res-count {
-    font-size: 1.2em;
+    font-size: 1.5em;
     font-weight: bold;
     color: white;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.4);
 }
 
 .trade-res-card .res-name {
-    font-size: 0.6em;
-    color: var(--text-dim);
+    font-size: 0.7em;
+    color: rgba(255,255,255,0.85);
     text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    margin-top: 2px;
 }
 
 .trade-res-card .res-have {
-    font-size: 0.55em;
-    color: var(--text-dim);
+    font-size: 0.6em;
+    color: rgba(255,255,255,0.6);
+    margin-top: 2px;
 }
 
 .trade-res-card.selected {
-    border-color: var(--accent2);
-    box-shadow: 0 0 8px rgba(243, 156, 18, 0.3);
+    box-shadow: 0 0 12px rgba(243, 156, 18, 0.5);
+    transform: translateY(-2px);
 }
+
+/* Resource-specific card colors */
+.trade-res-card[data-res="brick"]  { background: #a0341c; border-color: #c0392b; }
+.trade-res-card[data-res="lumber"] { background: #14582e; border-color: #1a7a42; }
+.trade-res-card[data-res="ore"]    { background: #4a545a; border-color: #7f8c8d; }
+.trade-res-card[data-res="grain"]  { background: #8a7200; border-color: #c9a800; }
+.trade-res-card[data-res="wool"]   { background: #1a8a4a; border-color: #2ecc71; }
+
+.trade-res-card[data-res="brick"]:hover  { border-color: #e74c3c; }
+.trade-res-card[data-res="lumber"]:hover { border-color: #27ae60; }
+.trade-res-card[data-res="ore"]:hover    { border-color: #95a5a6; }
+.trade-res-card[data-res="grain"]:hover  { border-color: #f1c40f; }
+.trade-res-card[data-res="wool"]:hover   { border-color: #2ecc71; }
+
+.trade-res-card[data-res="brick"].selected  { border-color: #e74c3c; box-shadow: 0 0 12px rgba(231, 76, 60, 0.5); }
+.trade-res-card[data-res="lumber"].selected { border-color: #27ae60; box-shadow: 0 0 12px rgba(39, 174, 96, 0.5); }
+.trade-res-card[data-res="ore"].selected    { border-color: #bdc3c7; box-shadow: 0 0 12px rgba(149, 165, 166, 0.5); }
+.trade-res-card[data-res="grain"].selected  { border-color: #f1c40f; box-shadow: 0 0 12px rgba(241, 196, 15, 0.5); }
+.trade-res-card[data-res="wool"].selected   { border-color: #2ecc71; box-shadow: 0 0 12px rgba(46, 204, 113, 0.5); }
 
 .trade-summary {
     text-align: center;
-    font-size: 0.75em;
+    font-size: 0.8em;
     color: var(--text-dim);
-    margin-top: 8px;
+    margin-top: 10px;
     min-height: 1.2em;
 }
 

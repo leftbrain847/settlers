@@ -889,7 +889,7 @@
         const want = {};
 
         function renderCards() {
-            // Give side — show your resources as clickable cards
+            // Give side — show your resources as clickable colored cards
             const giveCards = document.getElementById('trade-give-cards');
             giveCards.innerHTML = '';
             for (const res of resources) {
@@ -897,10 +897,10 @@
                 const selected = give[res] || 0;
                 const card = document.createElement('div');
                 card.className = 'trade-res-card' + (selected > 0 ? ' selected' : '');
-                card.style.borderColor = selected > 0 ? (resColors[res] || 'var(--accent2)') : '';
+                card.dataset.res = res;
                 card.innerHTML = `
                     <div class="res-count">${selected}</div>
-                    <div class="res-name">${res.slice(0, 4)}</div>
+                    <div class="res-name">${res}</div>
                     <div class="res-have">(${have})</div>
                 `;
                 card.addEventListener('click', (e) => {
@@ -928,10 +928,10 @@
                 const selected = want[res] || 0;
                 const card = document.createElement('div');
                 card.className = 'trade-res-card' + (selected > 0 ? ' selected' : '');
-                card.style.borderColor = selected > 0 ? (resColors[res] || 'var(--accent2)') : '';
+                card.dataset.res = res;
                 card.innerHTML = `
                     <div class="res-count">${selected}</div>
-                    <div class="res-name">${res.slice(0, 4)}</div>
+                    <div class="res-name">${res}</div>
                 `;
                 card.addEventListener('click', (e) => {
                     if (e.shiftKey && (want[res] || 0) > 0) {
