@@ -444,6 +444,26 @@ body {
     font-weight: bold;
 }
 
+.player-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+    font-size: 0.72em;
+    color: var(--text-dim);
+}
+
+.player-stats span {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 1px 5px;
+    border-radius: 3px;
+}
+
+.player-stats .stat-knights {
+    color: var(--accent);
+    background: rgba(233, 69, 96, 0.15);
+}
+
 /* ============================================================
    Right Panel — Actions & Info
    ============================================================ */

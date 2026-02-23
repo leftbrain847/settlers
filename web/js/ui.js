@@ -282,6 +282,23 @@
                 }
             }
 
+            // Build stats line: knights, settlements, cities, roads, dev cards
+            const knightsPlayed = (p.played_dev_cards || []).filter(c => c === 'knight').length;
+            const settlements = (p.buildings_placed || {}).settlement || 0;
+            const cities = (p.buildings_placed || {}).city || 0;
+            const roads = (p.buildings_placed || {}).road || 0;
+            const devCards = isMe ? (p.dev_cards || []).length : (p.dev_card_count || 0);
+
+            let statsHTML = '<div class="player-stats">';
+            statsHTML += `<span title="Settlements">${settlements}/5 stl</span>`;
+            statsHTML += `<span title="Cities">${cities}/4 cty</span>`;
+            statsHTML += `<span title="Roads">${roads}/15 rd</span>`;
+            if (knightsPlayed > 0) {
+                statsHTML += `<span title="Knights played" class="stat-knights">${knightsPlayed} knt</span>`;
+            }
+            statsHTML += `<span title="Dev cards held">${devCards} dev</span>`;
+            statsHTML += '</div>';
+
             card.innerHTML = `
                 <div class="player-name">
                     <span class="player-color-dot" style="background:${p.color}"></span>
@@ -291,8 +308,7 @@
                 <div class="player-vp">${p.vp} VP</div>
                 <div class="player-resources">${resourceHTML}</div>
                 ${achieveHTML ? `<div class="player-achievements">${achieveHTML}</div>` : ''}
-                ${isMe && p.dev_cards ? `<div style="font-size:0.75em;color:var(--text-dim);margin-top:4px;">${p.dev_cards.length} dev cards</div>` : ''}
-                ${!isMe && p.dev_card_count ? `<div style="font-size:0.75em;color:var(--text-dim);margin-top:4px;">${p.dev_card_count} dev cards</div>` : ''}
+                ${statsHTML}
             `;
 
             panel.appendChild(card);
