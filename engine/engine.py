@@ -413,6 +413,7 @@ class GameEngine:
                         break
                 if road_type:
                     # Check if player has reached max roads
+                    player = self.state.get_player(player_id)
                     placed = player.buildings_placed.get(road_type.id, 0)
                     if placed >= road_type.max_per_player:
                         # No more roads can be placed — clear the pending action
