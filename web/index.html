@@ -131,19 +131,25 @@
 
 <!-- Trade Offer Modal -->
 <div class="modal-overlay" id="trade-offer-modal">
-    <div class="modal">
-        <h2>Make a Trade Offer</h2>
-        <div class="trade-section">
-            <div class="trade-column">
-                <h4>You Give</h4>
-                <div class="resource-picker" id="trade-give-picker"></div>
+    <div class="modal trade-modal">
+        <h2>Trade with Players</h2>
+        <p class="trade-hint">Click resources to add them. Build your offer below.</p>
+
+        <div class="trade-builder">
+            <div class="trade-side trade-give-side">
+                <div class="trade-side-label">You Give</div>
+                <div class="trade-cards" id="trade-give-cards"></div>
+                <div class="trade-summary" id="trade-give-summary">Nothing selected</div>
             </div>
-            <div class="trade-column">
-                <h4>You Want</h4>
-                <div class="resource-picker" id="trade-want-picker"></div>
+            <div class="trade-arrow">&#x21C4;</div>
+            <div class="trade-side trade-want-side">
+                <div class="trade-side-label">You Want</div>
+                <div class="trade-cards" id="trade-want-cards"></div>
+                <div class="trade-summary" id="trade-want-summary">Nothing selected</div>
             </div>
         </div>
-        <div style="display:flex; gap:10px;">
+
+        <div style="display:flex; gap:10px; margin-top:16px;">
             <button class="btn btn-primary" id="btn-send-trade">Send Offer</button>
             <button class="btn btn-secondary" id="btn-cancel-trade">Cancel</button>
         </div>
@@ -152,9 +158,9 @@
 
 <!-- Incoming Trade Modal -->
 <div class="modal-overlay" id="incoming-trade-modal">
-    <div class="modal">
-        <h2>Trade Offer</h2>
-        <p id="incoming-trade-text"></p>
+    <div class="modal trade-modal">
+        <h2>Incoming Trade</h2>
+        <div class="incoming-trade-display" id="incoming-trade-display"></div>
         <div style="display:flex; gap:10px; margin-top:15px;">
             <button class="btn btn-primary" id="btn-accept-trade">Accept</button>
             <button class="btn btn-secondary" id="btn-decline-trade">Decline</button>

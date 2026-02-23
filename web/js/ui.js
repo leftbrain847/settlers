@@ -856,6 +856,11 @@
         modal.classList.add('active');
     }
 
+    const resColors = {
+        brick: '#c0392b', lumber: '#1a7a42', ore: '#7f8c8d',
+        grain: '#c9a800', wool: '#2ecc71',
+    };
+
     function showTradeOfferModal() {
         const modal = document.getElementById('trade-offer-modal');
         const state = Game.getState();
@@ -866,48 +871,77 @@
         const give = {};
         const want = {};
 
-        function renderPickers() {
-            document.getElementById('trade-give-picker').innerHTML = resources.map(res => `
-                <div class="resource-pick">
-                    <div style="font-size:0.7em;">${res}</div>
-                    <div style="font-size:0.7em;">have: ${me.resources[res] || 0}</div>
-                    <div class="pick-count">${give[res] || 0}</div>
-                    <div>
-                        <button data-res="${res}" data-side="give" data-dir="down">-</button>
-                        <button data-res="${res}" data-side="give" data-dir="up">+</button>
-                    </div>
-                </div>
-            `).join('');
-
-            document.getElementById('trade-want-picker').innerHTML = resources.map(res => `
-                <div class="resource-pick">
-                    <div style="font-size:0.7em;">${res}</div>
-                    <div class="pick-count">${want[res] || 0}</div>
-                    <div>
-                        <button data-res="${res}" data-side="want" data-dir="down">-</button>
-                        <button data-res="${res}" data-side="want" data-dir="up">+</button>
-                    </div>
-                </div>
-            `).join('');
-
-            modal.querySelectorAll('.resource-pick button').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const res = btn.dataset.res;
-                    const side = btn.dataset.side;
-                    const dir = btn.dataset.dir;
-                    const obj = side === 'give' ? give : want;
-                    if (dir === 'up') {
-                        if (side === 'give' && (give[res] || 0) >= (me.resources[res] || 0)) return;
-                        obj[res] = (obj[res] || 0) + 1;
-                    } else if (dir === 'down' && (obj[res] || 0) > 0) {
-                        obj[res] = (obj[res] || 0) - 1;
+        function renderCards() {
+            // Give side — show your resources as clickable cards
+            const giveCards = document.getElementById('trade-give-cards');
+            giveCards.innerHTML = '';
+            for (const res of resources) {
+                const have = me.resources[res] || 0;
+                const selected = give[res] || 0;
+                const card = document.createElement('div');
+                card.className = 'trade-res-card' + (selected > 0 ? ' selected' : '');
+                card.style.borderColor = selected > 0 ? (resColors[res] || 'var(--accent2)') : '';
+                card.innerHTML = `
+                    <div class="res-count">${selected}</div>
+                    <div class="res-name">${res.slice(0, 4)}</div>
+                    <div class="res-have">(${have})</div>
+                `;
+                card.addEventListener('click', (e) => {
+                    if (e.shiftKey && (give[res] || 0) > 0) {
+                        give[res] = (give[res] || 0) - 1;
+                    } else if ((give[res] || 0) < have) {
+                        give[res] = (give[res] || 0) + 1;
                     }
-                    renderPickers();
+                    renderCards();
                 });
-            });
+                card.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    if ((give[res] || 0) > 0) {
+                        give[res] = (give[res] || 0) - 1;
+                        renderCards();
+                    }
+                });
+                giveCards.appendChild(card);
+            }
+
+            // Want side
+            const wantCards = document.getElementById('trade-want-cards');
+            wantCards.innerHTML = '';
+            for (const res of resources) {
+                const selected = want[res] || 0;
+                const card = document.createElement('div');
+                card.className = 'trade-res-card' + (selected > 0 ? ' selected' : '');
+                card.style.borderColor = selected > 0 ? (resColors[res] || 'var(--accent2)') : '';
+                card.innerHTML = `
+                    <div class="res-count">${selected}</div>
+                    <div class="res-name">${res.slice(0, 4)}</div>
+                `;
+                card.addEventListener('click', (e) => {
+                    if (e.shiftKey && (want[res] || 0) > 0) {
+                        want[res] = (want[res] || 0) - 1;
+                    } else {
+                        want[res] = (want[res] || 0) + 1;
+                    }
+                    renderCards();
+                });
+                card.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    if ((want[res] || 0) > 0) {
+                        want[res] = (want[res] || 0) - 1;
+                        renderCards();
+                    }
+                });
+                wantCards.appendChild(card);
+            }
+
+            // Summaries
+            const giveSummary = Object.entries(give).filter(([, v]) => v > 0).map(([r, c]) => `${c} ${r}`).join(', ');
+            const wantSummary = Object.entries(want).filter(([, v]) => v > 0).map(([r, c]) => `${c} ${r}`).join(', ');
+            document.getElementById('trade-give-summary').textContent = giveSummary || 'Click to add';
+            document.getElementById('trade-want-summary').textContent = wantSummary || 'Click to add';
         }
 
-        renderPickers();
+        renderCards();
         modal.classList.add('active');
 
         document.getElementById('btn-send-trade').onclick = () => {
@@ -916,7 +950,7 @@
             for (const [k, v] of Object.entries(give)) { if (v > 0) offering[k] = v; }
             for (const [k, v] of Object.entries(want)) { if (v > 0) requesting[k] = v; }
             if (Object.keys(offering).length === 0 || Object.keys(requesting).length === 0) {
-                alert('Must offer and request something');
+                showNotification('Must offer and request something', 'warning');
                 return;
             }
             Game.tradeOffer(offering, requesting);
@@ -930,13 +964,27 @@
 
     function showIncomingTradeModal(tradeId, offer, state) {
         const modal = document.getElementById('incoming-trade-modal');
-        const text = document.getElementById('incoming-trade-text');
+        const display = document.getElementById('incoming-trade-display');
         const offerer = state.players[offer.from_player];
 
-        const offerStr = Object.entries(offer.offering).map(([r, c]) => `${c} ${r}`).join(', ');
-        const reqStr = Object.entries(offer.requesting).map(([r, c]) => `${c} ${r}`).join(', ');
+        function resChips(obj) {
+            return Object.entries(obj).filter(([, c]) => c > 0).map(([r, c]) =>
+                `<span class="res-chip" style="color:${resColors[r] || 'var(--text)'}">${c} ${r}</span>`
+            ).join('');
+        }
 
-        text.textContent = `${offerer.name} offers ${offerStr} for ${reqStr}`;
+        display.innerHTML = `
+            <div class="incoming-trade-side">
+                <div class="label">${offerer.name} gives</div>
+                <div class="resources">${resChips(offer.offering)}</div>
+            </div>
+            <div class="trade-arrow">&#x21C4;</div>
+            <div class="incoming-trade-side">
+                <div class="label">You give</div>
+                <div class="resources">${resChips(offer.requesting)}</div>
+            </div>
+        `;
+
         modal.classList.add('active');
 
         document.getElementById('btn-accept-trade').onclick = () => {
