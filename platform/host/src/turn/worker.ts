@@ -16,7 +16,9 @@
  *   security headers. Nothing is listable; there is no other route.
  * - No host key, or a short one, refuses everything (503).
  */
+import { OBJECT_URL } from '../env.ts';
 import { deny, json, secured } from '../headers.ts';
+import { UsageTally } from '../usageCore.ts';
 import { turnConfig } from './config.ts';
 import { newToken, randomHex, safeEqual, sanitizeName, sha256Hex, signRoomId, verifyRoomCap } from './crypto.ts';
 import type { TurnEnv } from './env.ts';
@@ -103,8 +105,18 @@ export async function routeInvite(request: Request, env: TurnEnv): Promise<Respo
   return secured(res);
 }
 
+// Every request this Worker answers (refusals included) is billed, so it counts into the shared meter, in batches.
+let tally: UsageTally | null = null;
+
 export default {
-  async fetch(request: Request, env: TurnEnv): Promise<Response> {
+  async fetch(request: Request, env: TurnEnv, ctx: ExecutionContext): Promise<Response> {
+    tally ??= new UsageTally(turnConfig().usageFlushMs);
+    tally.add({ workerRequests: 1 });
+    const delta = tally.due(Date.now());
+    if (delta && env.USAGE) {
+      const meter = env.USAGE.get(env.USAGE.idFromName('global'));
+      ctx.waitUntil(meter.fetch(`${OBJECT_URL}/add`, { method: 'POST', body: JSON.stringify(delta) }).then(() => undefined, () => undefined));
+    }
     try {
       return await routeInvite(request, env);
     } catch {

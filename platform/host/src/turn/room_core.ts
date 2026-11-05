@@ -15,13 +15,13 @@ interface Meta {
   v: 1; roomId: string; createdAt: number; lastActivity: number; phase: 'lobby' | 'playing' | 'finished';
   seats: Seat[]; pending: Pending[]; inviteHash: string; inviteExpiresAt: number; locked: boolean;
   settings: unknown; numBots: number; turnTimerS: number; botSpeed: number; finishedAt: number | null;
-  waitKey: string; waitDeadline: number | null; nextPendingId: number; botAt: number | null; closing: boolean; startedAt: number | null;
+  waitKey: string; waitDeadline: number | null; nextPendingId: number; botAt: number | null; botFailures: number; closing: boolean; startedAt: number | null;
 }
 
 export interface RoomDeps { store: Store; game: ErasedGame; profiles: ProfileService; usage: UsageService; host?: HostConfig }
 export interface ConnAttachment { seatId: string | null; pendingId: string | null }
 
-interface Conn { id: string; seatId: string | null; pendingId: string | null; windowStart: number; count: number; strikes: number; sentCfg: boolean }
+interface Conn { id: string; seatId: string | null; pendingId: string | null; windowStart: number; count: number; strikes: number; sentCfg: boolean; at: number }
 
 export class Out {
   sends: { to: string; msg: S2C }[] = [];
@@ -60,7 +60,7 @@ export class RoomCore {
       seats: [{ id: 'p1', name: sanitizeName(init.hostName, cfg.nameMaxLen, 'Host'), tokenHash: init.hostTokenHash, isHost: true, profileId: null, bot: 'none' }],
       pending: [], inviteHash: init.inviteHash, inviteExpiresAt: init.now + cfg.inviteTtlMs, locked: false,
       settings: deps.game.defaultSettings(), numBots: 1, turnTimerS: 0, botSpeed: 1, finishedAt: null, waitKey: '', waitDeadline: null,
-      nextPendingId: 1, botAt: null, closing: false, startedAt: null,
+      nextPendingId: 1, botAt: null, botFailures: 0, closing: false, startedAt: null,
     };
     const core = new RoomCore(deps, meta);
     core.save();
@@ -77,10 +77,14 @@ export class RoomCore {
   }
 
   // ------------------------------------------------------------ connections
-  connect(connId: string, attachment?: ConnAttachment): void {
-    this.conns.set(connId, { id: connId, seatId: attachment?.seatId ?? null, pendingId: attachment?.pendingId ?? null, windowStart: 0, count: 0, strikes: 0, sentCfg: false });
+  /** A new socket. `false` = the room is at its connection cap (the caller closes it). Unauthenticated sockets time out. */
+  connect(connId: string, attachment?: ConnAttachment, now: number = this.clock): boolean {
+    if (!attachment && this.conns.size >= this.cfg.maxConnections) return false;
+    this.conns.set(connId, { id: connId, seatId: attachment?.seatId ?? null, pendingId: attachment?.pendingId ?? null, windowStart: 0, count: 0, strikes: 0, sentCfg: false, at: now });
     this.counters.connects++;
+    return true;
   }
+
 
   attachment(connId: string): ConnAttachment { const c = this.conns.get(connId); return { seatId: c?.seatId ?? null, pendingId: c?.pendingId ?? null }; }
 
@@ -187,6 +191,7 @@ export class RoomCore {
     const r = this.instance.reduce(this.state, action);
     if (!r.ok) { out.error(conn.id, 'illegal', r.error); return; }
     this.state = r.state;
+    this.meta.botFailures = 0; // the game moved on: paused bots get to try again
     await this.afterChange(out, now, true, r.events);
   }
 
@@ -214,7 +219,7 @@ export class RoomCore {
       if (this.instance.isOver(this.state)) await this.finish(now);
       else {
         const plan = this.instance.bots.plan(this.state, this.botSeatIds());
-        m.botAt = plan.length ? now + (m.botSpeed === 0 ? 0 : this.instance.bots.delayMs(plan[0]!) / m.botSpeed) : null;
+        m.botAt = plan.length && (m.botFailures ?? 0) < this.cfg.maxBotFailures ? now + (m.botSpeed === 0 ? 0 : this.instance.bots.delayMs(plan[0]!) / m.botSpeed) : null;
         this.thinking = plan.length ? (plan[0] as { player_id?: string }).player_id ?? null : null;
       }
       if (changed) this.sendState(out, events);
@@ -249,6 +254,8 @@ export class RoomCore {
         } else if (m.phase === 'playing') {
           seat = m.seats.find((s) => s.id === cmd.seat && !s.isHost && s.bot !== 'none');
           if (!seat) return err('no_seat', 'Pick a bot-controlled seat to hand over.');
+          // The seat changes hands: whoever held it (an autopilot or timed-out tab) loses it now.
+          for (const c of [...this.conns.values()]) if (c.seatId === seat.id) { out.send(c.id, { t: 'replaced' }); out.close(c.id, 4000, 'replaced'); this.conns.delete(c.id); }
           seat.name = p.name; seat.tokenHash = p.tokenHash; seat.profileId = p.profileId;
           this.setBot(seat, 'none');
         } else return err('closed', 'The game is over.');
@@ -355,7 +362,9 @@ export class RoomCore {
   // ------------------------------------------------------------ profiles
   private async onProfileCreate(conn: Conn, seat: Seat, out: Out): Promise<void> {
     if (seat.profileId) return out.error(conn.id, 'has_profile', 'This seat already has a profile.');
-    const { id, secret } = await this.deps.profiles.create(seat.name);
+    let made: { id: string; secret: string };
+    try { made = await this.deps.profiles.create(seat.name); } catch { return out.error(conn.id, 'profile_unavailable', 'Profiles are full right now.'); }
+    const { id, secret } = made;
     seat.profileId = id;
     out.send(conn.id, { t: 'profile', id, name: seat.name, secret, recovery: fmtRecovery(id, secret), stats: await this.deps.profiles.stats(id) });
     this.broadcastLobby(out);
@@ -432,6 +441,8 @@ export class RoomCore {
     this.clock = now;
     if (m.closing || this.expired(now)) return { out, dead: true };
 
+    for (const c of [...this.conns.values()]) if (!c.seatId && !c.pendingId && now - c.at >= this.cfg.authTimeoutMs) { out.close(c.id, 1008, 'unauthenticated'); this.conns.delete(c.id); }
+
     const before = m.pending.length;
     m.pending = m.pending.filter((p) => now - p.at < this.cfg.joinRequestTtlMs);
     if (m.pending.length !== before) {
@@ -452,7 +463,9 @@ export class RoomCore {
       }
       if (m.botAt !== null && now >= m.botAt) {
         const plan = this.instance.bots.plan(this.state, this.botSeatIds());
-        for (const a of plan) { const r = this.instance.reduce(this.state, a); if (r.ok) { this.state = r.state; events.push(...r.events); changed = true; } }
+        let moved = false;
+        for (const a of plan) { const r = this.instance.reduce(this.state, a); if (r.ok) { this.state = r.state; events.push(...r.events); changed = true; moved = true; } }
+        m.botFailures = moved ? 0 : (m.botFailures ?? 0) + 1;
       }
       await this.afterChange(out, now, changed, events);
     }
@@ -484,6 +497,7 @@ export class RoomCore {
     const t = this.instance && this.state ? this.instance.timers.next() : null;
     if (t !== null) times.push(t);
     for (const p of m.pending) times.push(p.at + this.cfg.joinRequestTtlMs);
+    for (const c of this.conns.values()) if (!c.seatId && !c.pendingId) times.push(c.at + this.cfg.authTimeoutMs);
     if (this.counters.inbound + this.counters.connects > 0) times.push(this.counters.lastFlush + this.cfg.usageFlushMs);
     times.push(m.phase === 'finished' && m.finishedAt !== null ? m.finishedAt + this.cfg.finishedRoomTtlMs + 1 : m.lastActivity + (m.phase === 'lobby' ? this.cfg.lobbyIdleTtlMs : this.cfg.gameIdleTtlMs) + 1);
     return times.length ? Math.max(Math.min(...times), now + 1) : null;

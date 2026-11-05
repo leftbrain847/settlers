@@ -57,6 +57,7 @@ if (invite) {
   await refused('only the host key creates rooms', `${base}/api/rooms`, 403, { 'Content-Length': '0' }, 'POST');
   await refused('a forged room link opens no socket', `${base}/ws/${'0'.repeat(32)}.${'A'.repeat(22)}`, 403, WS);
   await refused('nothing else is routed', `${base}/api/rooms/list`, 404);
+  await refused('a socket from another site is refused', `${base}/ws/${'0'.repeat(32)}.${'A'.repeat(22)}`, 403, { ...WS, Origin: 'https://evil.example' });
 } else {
   await check('app page redirects to the Access login', `${base}/`, { strict: true });
   await check('assets need login', `${base}/index.html`);
@@ -66,9 +67,10 @@ if (invite) {
 
 // The Worker must have no other way in.
 const wrangler = readFileSync('wrangler.toml', 'utf8');
+const before = fails.length;
 if (!/^workers_dev\s*=\s*false/m.test(wrangler)) fails.push('wrangler.toml: workers_dev must be false');
-else if (!/^preview_urls\s*=\s*false/m.test(wrangler)) fails.push('wrangler.toml: preview_urls must be false');
-else console.log('ok   no workers.dev or preview URLs');
+if (!/^preview_urls\s*=\s*false/m.test(wrangler)) fails.push('wrangler.toml: preview_urls must be false');
+if (fails.length === before) console.log('ok   no workers.dev or preview URLs');
 
 if (fails.length) {
   console.error('\nSMOKE FAILED:\n' + fails.join('\n'));

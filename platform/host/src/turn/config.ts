@@ -14,6 +14,12 @@ export const HOST_CONFIG = {
   inviteTtlMs: 24 * 3600_000,
   joinRequestTtlMs: 5 * 60_000,
   maxPendingJoins: 8,
+  /** Sockets open at once per room (seated, waiting or not yet authenticated). */
+  maxConnections: 24,
+  /** A socket that hasn't sent join/resume after this long is closed, in ms. */
+  authTimeoutMs: 15_000,
+  /** Consecutive bot turns whose moves all fail before bots pause (a buggy bot can't loop alarms forever). */
+  maxBotFailures: 5,
   nameMaxLen: 16,
   minHostKeyLength: 32,
   /** `POST /api/rooms` bodies larger than this are refused, in bytes. */

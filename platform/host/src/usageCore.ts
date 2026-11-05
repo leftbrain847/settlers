@@ -44,7 +44,11 @@ export class UsageTally {
   private pending = emptyDelta();
   private lastFlushMs = 0;
 
-  constructor(private readonly flushMs: number) {}
+  private readonly flushMs: number;
+
+  constructor(flushMs: number) {
+    this.flushMs = flushMs;
+  }
 
   add(d: Partial<UsageDelta>): void {
     this.pending.workerRequests += d.workerRequests ?? 0;

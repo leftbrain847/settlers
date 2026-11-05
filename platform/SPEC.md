@@ -142,6 +142,9 @@ The platform Worker owns `/`, `/index.html` and `/api/platform/*`. More specific
     - Timers and bots run on the Durable Object alarm, never `setTimeout`, so the room still hibernates between moves.
     - Rooms count into the shared `USAGE` meter. Idle lobbies, idle games and finished games delete themselves (`lobbyIdleTtlMs`, `gameIdleTtlMs`, `finishedRoomTtlMs`).
     - Test a game in a real room in memory with `@app-builder/host/turn/testing` (no Cloudflare needed).
+    - Sockets that don't authenticate within `authTimeoutMs` are dropped; a room takes at most `maxConnections` sockets; handing a seat to a newcomer disconnects whoever held it; a bot whose moves keep failing pauses after `maxBotFailures` turns.
+    - Every Worker request, refusals included, counts into the shared meter.
+    - **Known limits (accepted for now):** the open hostname is reachable by anyone, so a request flood can spend the account's free daily quota (no data exposed, but every app stops until 00:00 UTC). The guard is a Cloudflare rate-limiting rule on `friendsHost` (one-time setup, below). A room link can't be revoked short of closing the room (rotating the invite stops new joins). Anyone holding an invite can fill the 8-slot join queue until the host rotates or locks it. All invite apps share one origin, so their browser storage is shared.
     - Not supported in invite mode: real-time rooms and solo replay (they assume Access identities).
 
 **Every room, any mode:**
@@ -245,6 +248,7 @@ Friends only, via the browser link. A home-screen shortcut keeps its own cookies
 ### 12. Backlog
 
 - A protocol version handshake.
+- Invite mode: one subdomain per app (separate browser storage), revocable room links (a cap epoch), a per-connection join limit.
 - A public privacy-policy page for Play listings.
 - A real-time (`room`) sample in the template.
 - A live test of hibernation and of the two *(verify)* items in the status table.

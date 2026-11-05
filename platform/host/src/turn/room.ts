@@ -87,7 +87,12 @@ export class TurnRoom extends DurableObject<TurnEnv> {
     const connId = randomHex(8);
     this.ctx.acceptWebSocket(server, [connId]);
     server.serializeAttachment({ seatId: null, pendingId: null });
-    core.connect(connId);
+    if (!core.connect(connId, undefined, Date.now())) {
+      server.close(1013, 'room busy');
+      return new Response(null, { status: 101, webSocket: client });
+    }
+    // Wake up to drop this socket if it never authenticates.
+    await this.reschedule();
     return new Response(null, { status: 101, webSocket: client });
   }
 

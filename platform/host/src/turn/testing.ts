@@ -53,7 +53,7 @@ export class Net {
     const id = `c${++this.seq}`;
     const c = new Client(this, id);
     this.clients.set(id, c);
-    this.core.connect(id);
+    this.core.connect(id, undefined, this.now);
     return c;
   }
 
