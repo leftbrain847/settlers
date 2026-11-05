@@ -1,0 +1,18 @@
+# Local development only (npm run e2e / worker:dev): the shared platform Worker that owns the usage meter, run
+# beside the app so its USAGE binding resolves. Never deployed from here; app_builder deploys the real one.
+name = "app-platform"
+main = "../../platform/host/src/platform.ts"
+compatibility_date = "2026-10-01"
+workers_dev = false
+
+[[durable_objects.bindings]]
+name = "USAGE"
+class_name = "UsageMeter"
+
+[[durable_objects.bindings]]
+name = "SCORES"
+class_name = "Scores"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["UsageMeter", "Scores"]

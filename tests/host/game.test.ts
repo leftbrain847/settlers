@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { Net } from './net.ts';
 import type { Client } from './net.ts';
 import type { GameView } from '../../games/settlers/engine/index.ts';
-import { newToken } from '../../host/src/crypto.ts';
+import { newToken } from '@app-builder/host/turn/crypto';
 
 const view = (c: Client): GameView => c.last('state')!.view as GameView;
 

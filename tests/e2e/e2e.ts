@@ -1,10 +1,10 @@
-// Run against `wrangler dev` (npm run e2e starts it): real workerd, real WebSockets, real Durable Objects.
+// Run against `wrangler dev` (npm run e2e starts it, with the platform Worker beside it): real workerd, real WebSockets, real Durable Objects.
 import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 
-const BASE = process.env.BASE ?? 'http://localhost:8787';
+const BASE = process.env.BASE ?? 'http://localhost:8787/settlers';
 const WS = BASE.replace(/^http/, 'ws');
-const hostKey = /HOST_KEY=(\w+)/.exec(readFileSync('host/.dev.vars', 'utf8'))![1]!;
+const hostKey = /HOST_KEY=(\w+)/.exec(readFileSync('.dev.vars', 'utf8'))![1]!;
 const token = (): string => [...crypto.getRandomValues(new Uint8Array(16))].map((b) => b.toString(16).padStart(2, '0')).join('');
 
 type Msg = Record<string, unknown> & { t: string };

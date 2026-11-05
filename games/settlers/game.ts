@@ -3,8 +3,8 @@ import type { Action, ActionType, GameConfig, GameEvent, GameState, GameView, Re
 import { botPlan, createBots, actionDelayMs } from './ai/driver.ts';
 import type { Bots } from './ai/driver.ts';
 import { TradeClock } from './clock.ts';
-import { defineGame } from '../../host/src/game-module.ts';
-import type { GameInstance, GameModule, GameResult } from '../../host/src/game-module.ts';
+import { defineGame } from '@app-builder/host/turn/game';
+import type { GameInstance, GameModule, GameResult } from '@app-builder/host/turn/game';
 
 const START_RES = { none: 0, some: 5, plenty: 10 } as const;
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);

@@ -4,12 +4,13 @@
   "type": "module",
   "scripts": {
     "test": "node --test \"tests/unit/*.test.ts\" \"tests/host/*.test.ts\"",
-    "typecheck": "tsc --noEmit && tsc -p host/tsconfig.json --noEmit",
-    "build": "node scripts/build.mjs",
-    "e2e": "node tests/e2e/e2e.ts",
-    "host:dev": "npm run build:host && cd host && wrangler dev --local",
-    "host:deploy": "npm run build:host && cd host && wrangler deploy",
-    "build:host": "node scripts/build-host.mjs"
+    "typecheck": "tsc --noEmit && tsc -p worker/tsconfig.json --noEmit",
+    "build": "node scripts/build-host.mjs && node scripts/build.mjs",
+    "build:artifact": "node scripts/build.mjs",
+    "e2e": "node tests/e2e/run.mjs",
+    "worker:dev": "npm run build && wrangler dev -c wrangler.toml -c tests/e2e/platform.wrangler.toml",
+    "deploy": "npm run build && wrangler deploy",
+    "smoke": "node scripts/smoke.mjs"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "5.20261023.1",
@@ -25,6 +26,8 @@
     "wrangler": "4.152.0"
   },
   "dependencies": {
+    "@app-builder/client-sdk": "file:platform/client-sdk",
+    "@app-builder/host": "file:platform/host",
     "three": "0.162.0"
   }
 }

@@ -1,0 +1,112 @@
+# Generated from app_builder/template. Platform changes arrive through `sync`, so edit app_builder, not this copy.
+#
+# Repo secrets this needs (Settings → Secrets and variables → Actions):
+#   CLOUDFLARE_API_TOKEN          friends deploys (Workers Scripts: Edit on your account)
+#   PLAY_SERVICE_ACCOUNT_JSON     Play uploads (only if targets.play.enabled)
+#   ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD   (Play only)
+name: app
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: app-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: Play build makes no network calls
+        run: |
+          if node -e "process.exit(require('./app.config.json').targets.play.enabled ? 0 : 1)"; then npm run build:play; else echo "Play target off"; fi
+
+  deploy-friends:
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - name: Deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          export CLOUDFLARE_ACCOUNT_ID=$(node -p "require('./platform/platform.config.json').cloudflareAccountId")
+          npm run deploy
+      - name: Smoke test (the app must sit behind the login wall)
+        id: smoke
+        run: npm run smoke
+      - name: Roll back if the smoke test failed
+        if: failure() && steps.smoke.outcome == 'failure'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          export CLOUDFLARE_ACCOUNT_ID=$(node -p "require('./platform/platform.config.json').cloudflareAccountId")
+          # On an app's first deploy there is no earlier version to roll back to, so take the Worker
+          # down instead: an app that might be outside the login wall must not stay live.
+          npx wrangler rollback -y -m "smoke test failed for ${GITHUB_SHA}" || npx wrangler delete --force
+
+  # UNTESTED: written against Capacitor 8.5.3 and Play's internal track; verify on the first real app.
+  android:
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Is the Play target on?
+        id: gate
+        run: echo "play=$(node -p "require('./app.config.json').targets.play.enabled")" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-node@v4
+        if: steps.gate.outputs.play == 'true'
+        with: { node-version: 22, cache: npm }
+      - uses: actions/setup-java@v4
+        if: steps.gate.outputs.play == 'true'
+        with: { distribution: temurin, java-version: 21 }
+      - name: Build the offline web bundle
+        if: steps.gate.outputs.play == 'true'
+        run: npm ci && npm run build:play
+      - name: Build the Android app bundle
+        if: steps.gate.outputs.play == 'true'
+        run: |
+          npm i --no-save @capacitor/cli@8.5.3 @capacitor/core@8.5.3 @capacitor/android@8.5.3
+          [ -d android ] || npx cap add android
+          npx cap sync android
+          VERSION_NAME=${GITHUB_REF_NAME#v}
+          sed -i -E "s/versionCode [0-9]+/versionCode ${GITHUB_RUN_NUMBER}/; s/versionName \"[^\"]+\"/versionName \"${VERSION_NAME}\"/" android/app/build.gradle
+          (cd android && ./gradlew bundleRelease)
+      - name: Sign the bundle
+        if: steps.gate.outputs.play == 'true'
+        env:
+          KS: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          echo "$KS" | base64 -d > upload.jks
+          jarsigner -keystore upload.jks -storepass "$KS_PASS" -keypass "$KEY_PASS" android/app/build/outputs/bundle/release/app-release.aab "$KEY_ALIAS"
+          rm upload.jks
+      - name: Upload to Play's internal track (promotion is manual, in the Play Console)
+        if: steps.gate.outputs.play == 'true'
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.example.apps.settlers
+          releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
+          track: internal
+          status: completed

@@ -18,20 +18,17 @@
     "skipLibCheck": true,
     "types": [
       "node"
-    ]
+    ],
+    "resolveJsonModule": true
   },
   "include": [
     "games",
-    "client-sdk",
-    "host",
     "tests/unit",
     "tests/host"
   ],
   "exclude": [
     "node_modules",
     "dist",
-    "host/src/worker.ts",
-    "host/src/env.ts",
-    "host/src/do-*.ts"
+    "platform"
   ]
 }

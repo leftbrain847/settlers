@@ -1,0 +1,13 @@
+{
+  "$comment": "Everything tunable about this app lives here. mode invite = friends join by link, no login (see platform/SPEC.md, Friends target, mode 4).",
+  "id": "settlers",
+  "title": "Settlers",
+  "mode": "invite",
+  "host": {
+    "inviteTtlMs": 86400000
+  },
+  "targets": {
+    "friends": { "enabled": true },
+    "play": { "enabled": false, "versionName": "0.1.0", "multiplayer": false }
+  }
+}

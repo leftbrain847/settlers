@@ -6,7 +6,7 @@ import type { Look } from './board3d/view.ts';
 import { PALETTE_IDS } from './board3d/style.ts';
 import type { PaletteId } from './board3d/style.ts';
 import type { BoardTap } from './board-svg.ts';
-import { LocalTransport, SPEEDS } from '../../../client-sdk/local.ts';
+import { LocalTransport, SPEEDS } from './local.ts';
 import { describeEvent } from './format.ts';
 import { newSeed } from '../engine/index.ts';
 import { defaults, toSettings } from './settings.ts';
@@ -21,7 +21,7 @@ import * as sheets from './sheets.ts';
 import { handOf, isLegal } from './ui-types.ts';
 import type { BoardRenderer, BoardTargets, Kind, Mode, Move, SheetCtx, SheetName, UiState } from './ui-types.ts';
 import type { ActionParams, ActionType, GameConfig, GameView, LegalAction, TradeOffer } from '../engine/types.ts';
-import type { KeyValueStore, SaveData, Snapshot, Transport, TransportOptions } from '../../../client-sdk/transport.ts';
+import type { KeyValueStore, SaveData, Snapshot, Transport, TransportOptions } from './transport.ts';
 
 const SAVE_KEY = 'settlers.save.v1';
 const PREF_KEY = 'settlers.prefs.v1';
