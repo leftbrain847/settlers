@@ -187,8 +187,9 @@ Friends only, via the browser link. A home-screen shortcut keeps its own cookies
 
 **App repos (`.github/workflows/app.yml`, generated):**
 1. **`test`**, on every push and PR: typecheck, tests, build, and the Play no-network check when Play is on.
-2. **`deploy-friends`**, on `main`: `wrangler deploy`. Skipped (green, with a note) until the app's host in `platform.config.json` is no longer an `example.com` placeholder and `CLOUDFLARE_API_TOKEN` is set, the same gate the platform's own deploy uses.
+2. **`deploy-friends`**, on `main`: `wrangler deploy`. Skipped (green, with a notice in the run summary) until the app's host (`friendsHost` for invite apps, `appsHost` otherwise) is no longer an `*.example.com` placeholder and `CLOUDFLARE_API_TOKEN` is set.
     - Then the smoke test: unauthenticated requests to the page, assets, API and room socket must all hit the login wall, and the config must show no `workers.dev` or preview URLs.
+    - The smoke test also runs if the deploy step failed partway, since wrangler may already have published.
     - If the smoke test fails: `wrangler rollback -y`.
 3. **`android`**, on a `v*` tag when Play is on: build, sign, upload to the internal track.
 

@@ -48,10 +48,11 @@ jobs:
           HAS_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
         run: |
           host=$(node -p "const a=require('./app.config.json'),p=require('./platform/platform.config.json'); a.mode==='invite'?p.friendsHost:p.appsHost")
-          if [[ "$host" == *.example.com ]] || [ "$HAS_TOKEN" != "true" ]; then echo "ready=false" >> "$GITHUB_OUTPUT"; echo "Skipping deploy: fill in platform.config.json in app_builder, sync, and add the CLOUDFLARE_API_TOKEN secret."; else echo "ready=true" >> "$GITHUB_OUTPUT"; fi
+          if [[ "$host" == *.example.com ]] || [ "$HAS_TOKEN" != "true" ]; then echo "ready=false" >> "$GITHUB_OUTPUT"; msg="Deploy skipped: $host is a placeholder or CLOUDFLARE_API_TOKEN is missing. Fill in platform.config.json in app_builder, sync, add the secret."; echo "::notice::$msg"; echo "$msg" >> "$GITHUB_STEP_SUMMARY"; else echo "ready=true" >> "$GITHUB_OUTPUT"; fi
       - run: npm ci
         if: steps.gate.outputs.ready == 'true'
       - name: Deploy
+        id: deploy
         if: steps.gate.outputs.ready == 'true'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -59,7 +60,8 @@ jobs:
           export CLOUDFLARE_ACCOUNT_ID=$(node -p "require('./platform/platform.config.json').cloudflareAccountId")
           npm run deploy
       - name: Smoke test (the app must sit behind the login wall)
-        if: steps.gate.outputs.ready == 'true'
+        # Runs even if Deploy failed partway: wrangler may have published before erroring.
+        if: ${{ !cancelled() && steps.gate.outputs.ready == 'true' && steps.deploy.outcome != 'skipped' }}
         id: smoke
         run: npm run smoke
       - name: Roll back if the smoke test failed
