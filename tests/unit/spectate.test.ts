@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { LocalTransport, HUMAN } from '../../client-sdk/local.ts';
-import type { Snapshot } from '../../client-sdk/transport.ts';
+import { LocalTransport, HUMAN } from '../../games/settlers/client/local.ts';
+import type { Snapshot } from '../../games/settlers/client/transport.ts';
 
 const idle = () => new Promise((r) => setTimeout(r, 0));
 async function settle(t: { pumping: boolean }): Promise<void> { for (let i = 0; i < 2000; i++) { await idle(); if (!t.pumping) { await idle(); if (!t.pumping) return; } } throw new Error('never settled'); }

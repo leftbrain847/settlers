@@ -1,0 +1,14 @@
+{
+  "name": "@app-builder/host",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./platform": "./src/platform.ts",
+    "./game-module": "./src/gameModule.ts",
+    "./protocol": "./src/protocol.ts",
+    "./turn": "./src/turn/index.ts",
+    "./turn/*": "./src/turn/*.ts"
+  }
+}

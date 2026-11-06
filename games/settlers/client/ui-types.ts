@@ -1,5 +1,5 @@
 import type { ActionParams, ActionType, GameConfig, GameView, LegalAction, LegalOf, PlayerView, ResMap, TradeOffer } from '../engine/types.ts';
-import type { Snapshot } from '../../../client-sdk/transport.ts';
+import type { Snapshot } from './transport.ts';
 
 export type Kind = 'i' | 'e' | 'h';
 export type SheetName = 'build' | 'trade' | 'dev' | 'log' | 'menu';

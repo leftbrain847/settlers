@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
 
 import type { App } from '../../games/settlers/client/app.ts';
-import type { Snapshot } from '../../client-sdk/transport.ts';
+import type { Snapshot } from '../../games/settlers/client/transport.ts';
 
 const dom = new JSDOM('<!doctype html><html><body><div id="app"></div></body></html>', { pretendToBeVisual: true, url: 'http://localhost/' });
 Object.assign(globalThis, {

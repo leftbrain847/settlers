@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Net } from './net.ts';
-import { HOST_CONFIG } from '../../host/src/config.ts';
-import { sha256Hex, newToken } from '../../host/src/crypto.ts';
+import { HOST_CONFIG } from '@app-builder/host/turn/config';
+import { sha256Hex, newToken } from '@app-builder/host/turn/crypto';
 
 test('shared link: request -> host approves -> seated; host sees duplicate names', async () => {
   const net = await Net.make();

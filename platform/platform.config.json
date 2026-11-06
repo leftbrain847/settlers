@@ -1,0 +1,12 @@
+{
+  "$comment": "One place for the account-wide settings every app shares. None of these are secrets (the AUD tag and team name appear in every login token). Fill in once; create-app and sync copy them into each app.",
+  "appsHost": "apps.example.com",
+  "friendsHost": "play.example.com",
+  "zone": "example.com",
+  "cloudflareAccountId": "",
+  "accessTeam": "",
+  "accessAud": "",
+  "allowedEmails": [],
+  "playPackagePrefix": "com.example.apps",
+  "platformWorker": "app-platform"
+}

@@ -3,11 +3,15 @@
 import { h, mount, inputOf, selectOf } from './dom.ts';
 import { defaults, toSettings } from './settings.ts';
 import { settingsFields } from './settings-form.ts';
-import { WsTransport } from '../../../client-sdk/ws.ts';
-import type { RoomInfo, SocketLike } from '../../../client-sdk/ws.ts';
-import type { KeyValueStore, Transport } from '../../../client-sdk/transport.ts';
-import type { HostCmd } from '../../../host/src/protocol.ts';
+import { WsTransport as TurnWs } from '@app-builder/client-sdk/turn/ws';
+import type { ActionType, GameConfig, GameEvent, GameView } from '../engine/types.ts';
+import type { RoomInfo, SocketLike } from '@app-builder/client-sdk/turn/ws';
+import type { KeyValueStore, Transport } from './transport.ts';
+import type { HostCmd } from '@app-builder/host/turn/protocol';
 import type { SettingValue } from './settings.ts';
+
+/** The platform's room socket, typed with this game's shapes. */
+class WsTransport extends TurnWs<GameView, GameEvent, GameConfig, ActionType> {}
 
 const ROOMS_KEY = 'settlers.rooms.v1';
 const PROFILE_KEY = 'settlers.profile.v1';
@@ -18,6 +22,8 @@ interface StoredProfile { id: string; secret: string; name: string }
 
 export interface OnlineEnv {
   origin: string;
+  /** The app's path on the host (`/settlers`); '' when served from the root. */
+  base?: string;
   path: string;
   hash: string;
   fetch: typeof fetch;
@@ -41,9 +47,11 @@ const randHex = (bytes: number): string => [...crypto.getRandomValues(new Uint8A
 const read = <T,>(st: KeyValueStore | null, k: string): T | null => { try { return JSON.parse(st?.getItem(k) ?? 'null') as T | null; } catch { return null; } };
 const write = (st: KeyValueStore | null, k: string, v: unknown): void => { try { st?.setItem(k, JSON.stringify(v)); } catch { /* storage unavailable */ } };
 
+declare const __BASE__: string | undefined;
+
 export function defaultEnv(): OnlineEnv {
   return {
-    origin: window.location.origin, path: window.location.pathname, hash: window.location.hash,
+    origin: window.location.origin, base: typeof __BASE__ === 'string' ? __BASE__ : '', path: window.location.pathname, hash: window.location.hash,
     fetch: (...a) => window.fetch(...a),
     replaceUrl: (p) => { try { window.history.replaceState(null, '', p); } catch { /* sandboxed */ } },
     copy: async (text) => { try { await navigator.clipboard.writeText(text); return true; } catch { return false; } },
@@ -56,6 +64,7 @@ const SPEED_CHOICES: [number, string][] = [[0.5, '0.5x'], [1, '1x'], [2, '2x'], 
 export class OnlineController {
   private app: AppLike;
   private env: OnlineEnv;
+  private get base(): string { return this.env.base ?? ''; }
   t: WsTransport | null = null;
   cap: string | null = null;
   private attached = false;
@@ -78,7 +87,7 @@ export class OnlineController {
     return r.invite ?? (this.cap ? this.sessions()[this.cap]?.invite ?? null : null);
   }
 
-  private inviteLink(cap: string, secret: string): string { return `${this.env.origin}/r/${cap}#k=${secret}`; }
+  private inviteLink(cap: string, secret: string): string { return `${this.env.origin}${this.base}/r/${cap}#k=${secret}`; }
 
   // ---------------------------------------------------------------- entry points
   /** Home-screen card. */
@@ -98,7 +107,8 @@ export class OnlineController {
 
   /** If the page was opened from an invite link, show the join screen. Returns true when handled. */
   openFromUrl(): boolean {
-    const m = /^\/r\/([0-9a-f]{32}\.[A-Za-z0-9_-]{22})\/?$/.exec(this.env.path);
+    const path = this.base && this.env.path.startsWith(`${this.base}/`) ? this.env.path.slice(this.base.length) : this.env.path;
+    const m = /^\/r\/([0-9a-f]{32}\.[A-Za-z0-9_-]{22})\/?$/.exec(path);
     if (!m) return false;
     const cap = m[1]!;
     const k = /^#k=([0-9a-f]{32})$/.exec(this.env.hash)?.[1];
@@ -113,14 +123,14 @@ export class OnlineController {
     const key = hostKey.trim();
     if (!key) { errorEl.textContent = 'Enter your host key.'; return; }
     try {
-      const r = await this.env.fetch('/api/rooms', { method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ name: this.app.prefs.name }) });
+      const r = await this.env.fetch(`${this.base}/api/rooms`, { method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ name: this.app.prefs.name }) });
       if (r.status === 403) { errorEl.textContent = 'That host key was not accepted.'; return; }
       if (r.status === 503) { errorEl.textContent = 'The server is out of free capacity for today. Try again after 8 pm Eastern.'; return; }
       if (!r.ok) { errorEl.textContent = 'Could not create the room.'; return; }
       const room = (await r.json()) as { cap: string; invite: string; hostToken: string };
       try { this.app.storage?.setItem(HOSTKEY_KEY, key); } catch { /* optional */ }
       this.saveSession(room.cap, { token: room.hostToken, name: this.app.prefs.name, host: true, invite: { secret: room.invite, expiresAt: Date.now() + 24 * 3600_000 } });
-      this.env.replaceUrl(`/r/${room.cap}`);
+      this.env.replaceUrl(`${this.base}/r/${room.cap}`);
       this.rejoin(room.cap);
     } catch { errorEl.textContent = 'Could not reach the server.'; }
   }
@@ -136,7 +146,7 @@ export class OnlineController {
           this.app.prefs.name = n; this.app.savePrefs();
           const token = randHex(16);
           this.saveSession(cap, { token, name: n, host: false });
-          this.env.replaceUrl(`/r/${cap}`); // the invite secret does not stay in the address bar
+          this.env.replaceUrl(`${this.base}/r/${cap}`); // the invite secret does not stay in the address bar
           this.connect(cap, token, { invite, name: n });
         } }, 'Ask to join'),
         h('p.dim.small', 'The host will let you in. You can use any name; stats are tied to a profile, not a name.'))));
@@ -153,7 +163,7 @@ export class OnlineController {
     this.cap = cap;
     const prof = this.profile();
     const t = new WsTransport({
-      url: `${this.env.origin.replace(/^http/, 'ws')}/ws/${cap}`, token, ...(join ? { join } : {}),
+      url: `${this.env.origin.replace(/^http/, 'ws')}${this.base}/ws/${cap}`, token, ...(join ? { join } : {}),
       ...(prof ? { profile: { id: prof.id, secret: prof.secret } } : {}),
       ...(this.env.makeSocket ? { makeSocket: this.env.makeSocket } : {}),
     });
@@ -200,7 +210,7 @@ export class OnlineController {
 
   private screen(text: string): void {
     this.reset();
-    mount(this.app.root, h('div.lobby', h('h1', 'Settlers'), h('div.card.form', h('p#room-message', text), h('button.btn.primary.big#home', { onclick: () => { this.env.replaceUrl('/'); this.app.showLobby(); } }, 'Back to start'))));
+    mount(this.app.root, h('div.lobby', h('h1', 'Settlers'), h('div.card.form', h('p#room-message', text), h('button.btn.primary.big#home', { onclick: () => { this.env.replaceUrl(`${this.base}/`); this.app.showLobby(); } }, 'Back to start'))));
   }
 
   // ---------------------------------------------------------------- pre-game screens
@@ -213,7 +223,7 @@ export class OnlineController {
       case 'closed': this.screen(r.error ?? 'The room was closed.'); return;
       case 'pending':
         mount(this.app.root, h('div.lobby', h('h1', 'Settlers'), h('div.card.form', h('p#room-status', 'Waiting for the host to let you in…'), h('p.dim.small', 'Keep this page open. You will join automatically.'),
-          h('button.btn', { onclick: () => { if (this.cap) this.forgetSession(this.cap); this.env.replaceUrl('/'); this.app.showLobby(); } }, 'Cancel'))));
+          h('button.btn', { onclick: () => { if (this.cap) this.forgetSession(this.cap); this.env.replaceUrl(`${this.base}/`); this.app.showLobby(); } }, 'Cancel'))));
         return;
       case 'joined': this.roomLobby(r); return;
     }

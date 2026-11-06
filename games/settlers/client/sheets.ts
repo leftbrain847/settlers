@@ -4,7 +4,7 @@ import { bankRatio } from '../engine/state.ts';
 import { describeLog } from './format.ts';
 import { handOf, isLegal } from './ui-types.ts';
 import type { GameConfig, ResMap, TradeOffer } from '../engine/types.ts';
-import type { Snapshot } from '../../../client-sdk/transport.ts';
+import type { Snapshot } from './transport.ts';
 import type { IncomingCtx, SheetCtx, WaitingCtx } from './ui-types.ts';
 
 const sum = (m: ResMap): number => Object.values(m).reduce((a, b) => a + b, 0);
