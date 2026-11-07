@@ -3,10 +3,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test \"tests/unit/*.test.ts\" \"tests/host/*.test.ts\"",
+    "test": "node --test \"tests/unit/*.test.ts\" \"tests/host/*.test.ts\" \"tests/web_build/*.test.ts\"",
     "typecheck": "tsc --noEmit && tsc -p worker/tsconfig.json --noEmit",
     "build": "node scripts/build-host.mjs && node scripts/build.mjs",
     "build:artifact": "node scripts/build.mjs",
+    "build:web": "node scripts/build.mjs && mkdir -p web && cp dist/settlers.html web/settlers.html",
     "e2e": "node tests/e2e/run.mjs",
     "worker:dev": "npm run build && wrangler dev -c wrangler.toml -c tests/e2e/platform.wrangler.toml",
     "deploy": "npm run build && wrangler deploy",
