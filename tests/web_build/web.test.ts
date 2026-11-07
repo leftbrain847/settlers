@@ -14,5 +14,7 @@ test('web/settlers.html matches a fresh build (run npm run build:web)', () => {
 
 test('the public build loads nothing from other sites', () => {
   const page = readFileSync('web/settlers.html', 'utf8');
-  assert.doesNotMatch(page, /<(script|link|img)[^>]+(src|href)="https?:/i);
+  assert.doesNotMatch(page, /<(script|link|img|iframe)[^>]+(src|href)\s*=\s*["']?(https?:)?\/\//i);   // tags, any quoting
+  assert.doesNotMatch(page, /url\(\s*["']?(https?:)?\/\//i);                                          // CSS
+  assert.doesNotMatch(page, /@import\s+["']?(url\()?\s*["']?https?:/i);
 });
