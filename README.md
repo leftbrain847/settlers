@@ -77,3 +77,7 @@ free-plan requests; the room meter refuses new rooms above 95% of the daily budg
 Quota numbers in `host/src/config.ts` follow the plan document and should be re-checked against Cloudflare's
 current limits. Static files are served by the platform and do not run Worker code. The game is turn based, so
 rooms hibernate between moves; only bot pacing, trade timers and the turn timer use alarms.
+
+## License
+
+MIT, see `LICENSE`. "Catan" is a trademark of its owners; this project is an unofficial fan implementation and is not affiliated with or endorsed by them.
