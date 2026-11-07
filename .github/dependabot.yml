@@ -1,9 +1,22 @@
+# One grouped PR per ecosystem per month. Security fixes are not delayed by this: the nightly
+# Command Center scan (OSV) flags vulnerable versions, and Dependabot security updates are separate.
+# @types/node stays on the runtime's major (Node 22).
+# Major versions come from app_builder via `sync`, so they are ignored here; platform/ and app.yml are synced.
 version: 2
 updates:
-  - package-ecosystem: npm
-    directory: /
-    schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
-    # platform/ and .github/workflows/app.yml are copied from app_builder by `sync`;
-    # their updates happen there, so this only watches the app's own package.json.
+- package-ecosystem: npm
+  directory: /
+  schedule:
+    interval: monthly
+  open-pull-requests-limit: 5
+  groups:
+    all:
+      patterns:
+      - '*'
+  ignore:
+  - dependency-name: '@types/node'
+    update-types:
+    - version-update:semver-major
+  - dependency-name: '*'
+    update-types:
+    - version-update:semver-major
