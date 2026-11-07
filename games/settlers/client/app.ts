@@ -131,7 +131,7 @@ export class App {
 
     const lobby = h('div.lobby',
       h('h1', 'Settlers'),
-      h('p.dim', 'Play against bots, or with friends.'),
+      h('p.dim', this.online ? 'Play against bots, or with friends.' : 'Play against bots.'),   // no host in the single-file build
       h('div.card.form',
         h('label.field', h('span', 'Your name'), h('input#name', { type: 'text', value: p.name, maxlength: 16, onchange: (e) => { p.name = inputOf(e).value.trim() || 'You'; } })),
         h('label.field', h('span', 'Bot opponents'), h('select#bots', { onchange: (e) => { p.bots = Number(selectOf(e).value); } }, [1, 2, 3].map((n) => h('option', { value: n, selected: n === p.bots }, `${n} bot${n > 1 ? 's' : ''}`)))),

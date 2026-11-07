@@ -214,3 +214,8 @@ test('what just happened is shown once: a new piece pops in, then redraws leave 
   assert.equal($$('.toast').length, 0, 'nothing is written to the player for ordinary events');
   assert.ok($$('.pchip[data-seat]').length >= 3);
 });
+
+test('without online play the lobby does not promise friends', () => {
+  boot(document.getElementById('app')!, { storage: memStore(), online: false });
+  assert.equal(maybe('.lobby p.dim')?.textContent, 'Play against bots.');
+});
