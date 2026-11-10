@@ -37,10 +37,16 @@ h4.group { margin-top: 16px; }
 .die { width: 28px; height: 28px; border-radius: 6px; background: #f6f2e8; color: #222; font-weight: 800; display: grid; place-items: center; }
 .die.off { opacity: .25; } .dice-total { margin-left: 4px; font-weight: 800; color: var(--accent2); }
 .players { flex: none; display: flex; gap: 8px; padding: 8px 10px; overflow-x: auto; background: var(--bg); scrollbar-width: none; }
-.pchip { flex: none; display: grid; grid-template-columns: auto 1fr auto; column-gap: 8px; align-items: center; padding: 6px 10px; border-radius: 10px; background: var(--panel); border: 2px solid transparent; min-width: 150px; }
+.pchip { flex: none; display: grid; grid-template-columns: auto 1fr auto; column-gap: 8px; align-items: center; padding: 6px 8px; border-radius: 10px; background: var(--panel); border: 2px solid transparent; min-width: 0; }
+/* Boxes share the row: three always fit a phone; from four on they keep a floor width and the row scrolls. */
+.players > .pchip { flex: 1 0 104px; column-gap: 6px; }
+.players > .pchip .dot { grid-row: 1; }
+.players > .pchip .pmeta { grid-column: 1 / -1; overflow: hidden; gap: 2px; }
+.players > .pchip .pmeta .ico { width: 11px; height: 11px; }
+.players > .pchip .pmeta .ico + .ico, .players > .pchip .pmeta :not(.ico) + .ico { margin-left: 4px; }
 .pchip.active { border-color: var(--accent2); }
-.pchip .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--pc); grid-row: 1 / span 2; box-shadow: 0 0 0 2px rgba(0,0,0,.35); }
-.pname { font-weight: 700; font-size: 13px; white-space: nowrap; } .pvp { font-weight: 800; color: var(--accent2); font-size: 13px; }
+.pchip .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--pc); grid-row: 1 / span 2; box-shadow: 0 0 0 2px rgba(255,255,255,.6); } /* light ring: the black seat must show on the dark bar */
+.pname { font-weight: 700; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; } .pvp { font-weight: 800; color: var(--accent2); font-size: 13px; }
 .pmeta { grid-column: 2 / span 2; font-size: 11px; color: var(--dim); white-space: nowrap; }
 .badge { margin-left: 4px; padding: 0 5px; border-radius: 4px; background: var(--accent2); color: #1b1b1b; font-size: 10px; font-weight: 800; }
 .boardwrap { position: relative; flex: 1; min-height: 0; background: radial-gradient(ellipse at center, var(--sea) 0%, var(--sea2) 100%); }
@@ -96,8 +102,10 @@ h4.group { margin-top: 16px; }
 .token { fill: #f6f2e8; stroke: rgba(0,0,0,.4); stroke-width: 1; } .token-num { font-size: 13px; font-weight: 800; fill: #222; text-anchor: middle; dominant-baseline: central; pointer-events: none; } .token-num.red { fill: #c62828; }
 .pip { fill: #555; } .pip.red { fill: #c62828; }
 .port-line { stroke: rgba(30,40,60,.6); stroke-width: 1.4; stroke-dasharray: 3 2; } .port-badge { fill: #fdf6e3; stroke: #345; stroke-width: 2; } .port-text { font-size: 6.5px; font-weight: 800; fill: #223; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
-.road-edge { stroke: rgba(0,0,0,.65); stroke-width: 9; stroke-linecap: round; } .road { stroke-width: 5.5; stroke-linecap: round; } .road.ghost, .piece.ghost { opacity: .6; }
-.piece-shape { stroke: #1a1a1a; stroke-width: 1.6; stroke-linejoin: round; }
+/* The terrain is muted so player pieces stand out; number tokens stay full strength. */
+.hexes > .hex, .hexes > .scene, .hexes > .terrain-ico { filter: saturate(.55) brightness(.7); }
+.road-edge { stroke: rgba(0,0,0,.8); stroke-width: 11; stroke-linecap: round; } .road { stroke-width: 7; stroke-linecap: round; } .road.ghost, .piece.ghost { opacity: .6; }
+.piece-shape { stroke: #111; stroke-width: 2; stroke-linejoin: round; }
 .robber { fill: #20242c; stroke: #fff; stroke-width: 1; opacity: .92; pointer-events: none; }
 .target-dot { fill: var(--accent2); opacity: .9; pointer-events: none; animation: pulse 1.1s infinite ease-in-out; transform-box: fill-box; transform-origin: center; }
 @keyframes pulse { 50% { transform: scale(1.5); opacity: .55; } }
@@ -153,7 +161,7 @@ code.link { display: block; padding: 10px; border-radius: 8px; background: var(-
 .pmeta .ico { color: var(--dim); }
 .pmeta .ico + .ico, .pmeta :not(.ico) + .ico { margin-left: 5px; }
 .owes { display: inline-flex; align-items: center; gap: 2px; margin-left: 6px; padding: 0 5px; border-radius: 999px; background: #8a2f2f; color: #fff; font-weight: 800; }
-.pchip.me { box-shadow: inset 0 -3px 0 var(--pc); }
+.pchip.me { box-shadow: inset 0 -3px 0 var(--pc), inset 0 -4px 0 rgba(255,255,255,.5); }
 .badge { display: inline-grid; place-items: center; padding: 2px 4px; }
 .badge .ico { color: #1b1b1b; }
 .think { display: inline-flex; gap: 3px; margin-left: 6px; align-self: center; }

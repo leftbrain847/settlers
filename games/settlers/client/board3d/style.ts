@@ -1,6 +1,7 @@
 // Visual presets for the 3D board. A style decides how things are built; a light decides time of day; a palette
 // (the same four themes as the 2D board) decides colors.
 import { THEMES } from '../theme.ts';
+import { PLAYER_COLORS } from '../../engine/state.ts';
 
 export type StyleId = 'civ' | 'realistic' | 'tabletop';
 export type LightId = 'day' | 'dusk' | 'night';
@@ -48,6 +49,11 @@ export const LIGHTS: Record<LightId, LightPreset> = {
   night: { id: 'night', label: 'Night', sky: '#0a1226', fog: '#0c1630', fogNear: 1.1, fogFar: 3.0, hemiSky: '#6a88cc', hemiGround: '#141c38', hemi: 1.35, sun: '#a9c0ff', sunPower: 1.9, sunPos: [6, 9, -5], exposure: 1.25, windows: 1, chipTint: '#aebbd8', waterTint: '#6d86c8' },
 };
 
+/** How bright the board (terrain, props, sea) is next to the player pieces, in every style and light. */
+export const BACKDROP_DIM = 0.5;
+/** Self-glow on player pieces, as a share of their colour, so dimming the backdrop does not dim them. */
+export const PIECE_GLOW = 0.6;
+
 export type PaletteId = 'natural' | 'ocean' | 'nord' | 'pastel' | 'night';
 
 export interface Palette {
@@ -67,7 +73,7 @@ const EXTRAS: Record<Exclude<PaletteId, 'natural'>, Extras> = {
 /** Earth tones for the 3D board: it reads as a landscape rather than a theme. */
 const NATURAL: Palette = {
   terrain: { hills: '#b8643f', forest: '#557f3c', mountains: '#8c9196', fields: '#cfae52', pasture: '#8fbf5e', desert: '#e3cb8f' },
-  players: ['#d94b4b', '#3b7dd8', '#f2f2f2', '#f0a030', '#8e5bd6', '#2fb58a'],
+  players: PLAYER_COLORS,
   sea: '#2f86b3', shore: '#8fe0d6', deep: '#154c78', foliage: '#3f7f3d', grass: '#79b04e', wheat: '#e0b840',
 };
 

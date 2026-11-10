@@ -128,7 +128,7 @@ export class RoomCore {
     if (!seat) { out.close(connId, 1008, 'seat gone'); return out; }
     switch (msg.t) {
       case 'action': await this.onAction(conn, seat, msg, out, now); break;
-      case 'autopilot': this.setBot(seat, msg.on ? 'self' : 'none'); await this.afterChange(out, now, true); break;
+      case 'autopilot': this.setBot(seat, msg.on ? 'self' : 'none'); this.broadcastLobby(out); await this.afterChange(out, now, true); break;
       case 'profile_create': await this.onProfileCreate(conn, seat, out); break;
       case 'profile_link': await this.onProfileLink(conn, seat, msg.profile, out); break;
       case 'profile_delete': await this.onProfileDelete(conn, seat, msg.profile, out); break;
@@ -187,9 +187,15 @@ export class RoomCore {
     if ((this.meta.phase !== 'playing') || !this.instance) { out.error(conn.id, 'not_playing', 'The game has not started.'); return; }
     const action = this.instance.parseAction(msg.type, msg.params, seat.id); // player_id comes from the seat, never from the client
     if (!action) { out.error(conn.id, 'bad_action', 'That move is not valid.'); return; }
-    if (seat.bot === 'afk' || seat.bot === 'self') this.setBot(seat, 'none');
+    const released = seat.bot === 'afk' || seat.bot === 'self';
+    if (released) this.setBot(seat, 'none');
     const r = this.instance.reduce(this.state, action);
-    if (!r.ok) { out.error(conn.id, 'illegal', r.error); return; }
+    if (released) this.broadcastLobby(out);   // everyone's seat list shows the player back, not still on a bot
+    if (!r.ok) {
+      out.error(conn.id, 'illegal', r.error);
+      if (released) await this.afterChange(out, now, false);   // the seat change still has to be saved and the timer re-armed
+      return;
+    }
     this.state = r.state;
     this.meta.botFailures = 0; // the game moved on: paused bots get to try again
     await this.afterChange(out, now, true, r.events);
@@ -215,7 +221,11 @@ export class RoomCore {
     if (this.instance && this.state && m.phase === 'playing') {
       this.instance.timers.sync(this.state, now);
       const w = this.instance.waitingOn(this.state);
-      if (w.key !== m.waitKey) { m.waitKey = w.key; m.waitDeadline = m.turnTimerS > 0 && w.seats.some((id: string) => this.isHuman(id)) ? now + m.turnTimerS * 1000 : null; }
+      const humanWaited = m.turnTimerS > 0 && w.seats.some((id: string) => this.isHuman(id));
+      if (w.key !== m.waitKey) { m.waitKey = w.key; m.waitDeadline = humanWaited ? now + m.turnTimerS * 1000 : null; }
+      // A person waited on with no timer running (their seat just came back from a bot): start one. A running timer is
+      // never extended here, so toggling autopilot or reconnecting cannot buy more time.
+      else if (m.waitDeadline === null && humanWaited) m.waitDeadline = now + m.turnTimerS * 1000;
       if (this.instance.isOver(this.state)) await this.finish(now);
       else {
         const plan = this.instance.bots.plan(this.state, this.botSeatIds());

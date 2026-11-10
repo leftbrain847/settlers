@@ -7,6 +7,7 @@ import { Kit, scaleSat, tint } from './kit.ts';
 import { Pieces } from './pieces.ts';
 import { DRESS, hexNorm } from './props.ts';
 import type { SheepRef } from './props.ts';
+import { BACKDROP_DIM } from './style.ts';
 import type { LightPreset, Palette, StylePreset } from './style.ts';
 import type { GameConfig, GameView } from '../../engine/types.ts';
 
@@ -104,7 +105,7 @@ function badgeTexture(label: string, ring: string, make: MakeCanvas): THREE.Data
 /** Sea: a flat unlit plane whose color is computed per pixel from the distance to the nearest tile, so the shoreline is exact. */
 function seaMaterial(tiles: ({ x: number; z: number } | undefined)[], pal: Palette, light: LightPreset, time: { value: number }, style: StylePreset): THREE.MeshBasicMaterial {
   const pts = tiles.filter((t): t is { x: number; z: number } => !!t).map((t) => new THREE.Vector2(t.x, t.z));
-  const mat = new THREE.MeshBasicMaterial({ color: light.waterTint, fog: true });
+  const mat = new THREE.MeshBasicMaterial({ color: new THREE.Color(light.waterTint).multiplyScalar(BACKDROP_DIM), fog: true });
   const col = (hex: string): THREE.Color => new THREE.Color(hex);
   const uniforms = { uTime: time, uHex: { value: pts }, uShore: { value: col(pal.shore) }, uSea: { value: col(pal.sea) }, uDeep: { value: col(pal.deep) }, uSun: { value: new THREE.Color(light.sun) }, uGlint: { value: light.windows > 0.3 ? 0.35 : 1 }, uFoam: { value: style.flat ? 0 : 1 } };
   mat.onBeforeCompile = (shader) => {
@@ -351,8 +352,9 @@ export function buildBoard(o: BuildOpts): Built {
   }
 
   // ---------------------------------------------------------------- lights
-  const hemi = new THREE.HemisphereLight(light.hemiSky, light.hemiGround, light.hemi);
-  const sun = new THREE.DirectionalLight(light.sun, light.sunPower);
+  // Land and sea are lit at BACKDROP_DIM; player pieces carry their own glow (pieces.ts), so they stand out.
+  const hemi = new THREE.HemisphereLight(light.hemiSky, light.hemiGround, light.hemi * BACKDROP_DIM);
+  const sun = new THREE.DirectionalLight(light.sun, light.sunPower * BACKDROP_DIM);
   sun.position.set(...light.sunPos);
   sun.target.position.set(0, 0, 0);
   if (style.shadows) {

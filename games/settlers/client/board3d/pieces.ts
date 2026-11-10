@@ -2,6 +2,7 @@
 // Rebuilt on every update (they are a few dozen meshes); the terrain around them is built once.
 import * as THREE from 'three';
 import { Kit, scaleSat, tint } from './kit.ts';
+import { PIECE_GLOW } from './style.ts';
 import type { LightPreset, Palette, StylePreset } from './style.ts';
 import type { Topology } from '../../engine/topology.ts';
 import type { GameView } from '../../engine/types.ts';
@@ -47,9 +48,12 @@ export class Pieces {
   set(view: GameView, targets: BoardTargets, now = Date.now()): void {
     this.clearGroup();
     const { kit, style, light, pal, topo } = this.c;
-    const mat = (color: THREE.Color | string, o: { rough?: number; opacity?: number } = {}): THREE.MeshStandardMaterial => {
-      const m = new THREE.MeshStandardMaterial({ color, roughness: o.rough ?? 0.6, flatShading: style.flat, ...(o.opacity !== undefined ? { transparent: true, opacity: o.opacity, depthWrite: false } : {}) });
+    const glowing = new Set<THREE.Material>();
+    const mat = (color: THREE.Color | string, o: { rough?: number; opacity?: number; glow?: boolean } = {}): THREE.MeshStandardMaterial => {
+      const emissive = o.glow ? new THREE.Color(color).multiplyScalar(PIECE_GLOW) : new THREE.Color(0);
+      const m = new THREE.MeshStandardMaterial({ color, emissive, roughness: o.rough ?? 0.6, flatShading: style.flat, ...(o.opacity !== undefined ? { transparent: true, opacity: o.opacity, depthWrite: false } : {}) });
       this.owned.push(m);
+      if (o.glow) glowing.add(m);
       return m;
     };
     const windowMat = new THREE.MeshBasicMaterial({ color: light.windows > 0.3 ? '#ffd98a' : '#31465a' });
@@ -58,23 +62,32 @@ export class Pieces {
     this.owned.push(windowMat, smokeMat);
     const idx = (pid: string): number => Math.max(0, view.player_order.indexOf(pid));
     const colorOf = (pid: string): THREE.Color => scaleSat(pal.players[idx(pid) % pal.players.length]!, 1);
-    const k = (style.propScale > 1.2 ? 1.2 : 1) * 1.55;
+    const k = (style.propScale > 1.2 ? 1.2 : 1) * 1.75;
+    // A dark shell behind each player part (inverted hull) outlines it against the board.
+    const outline = new THREE.MeshBasicMaterial({ color: '#111318', side: THREE.BackSide });
+    this.owned.push(outline);
 
     const part = (parent: THREE.Object3D, geo: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number, sx: number, sy: number, sz: number, shadow = true): THREE.Mesh => {
       const me = new THREE.Mesh(geo, m);
       me.position.set(x, y, z); me.scale.set(sx, sy, sz);
       me.castShadow = shadow && style.shadows;
       parent.add(me);
+      if (glowing.has(m)) {
+        const hull = new THREE.Mesh(geo, outline), e = 0.035; // child of the part, so it follows its rotation and pop
+        hull.scale.set((sx + e) / sx, (sy + e) / sy, (sz + e) / sz); hull.position.y = -e / 2 / sy;
+        me.add(hull);
+      }
       return me;
     };
 
     const building = (type: string, color: THREE.Color, ghost: boolean): THREE.Group => {
       const g = new THREE.Group();
-      const body = mat(color, ghost ? { opacity: 0.55 } : {}), roof = mat(tint(color, 0, 0, -0.18), ghost ? { opacity: 0.55 } : {});
+      const solid = ghost ? { opacity: 0.55 } : { glow: true };
+      const body = mat(color, solid), roof = mat(tint(color, 0, 0, -0.18), solid);
       if (type === 'city') {
         part(g, kit.geo.cyl4, body, -0.05 * k, 0, 0, 0.3 * k, 0.17 * k, 0.2 * k);
         part(g, kit.geo.pyramid, roof, -0.05 * k, 0.17 * k, 0, 0.32 * k, 0.12 * k, 0.24 * k);
-        part(g, kit.geo.cyl4, mat(tint(color, 0, 0, 0.04), ghost ? { opacity: 0.55 } : {}), 0.12 * k, 0, 0, 0.13 * k, 0.3 * k, 0.13 * k);
+        part(g, kit.geo.cyl4, mat(tint(color, 0, 0, 0.04), solid), 0.12 * k, 0, 0, 0.13 * k, 0.3 * k, 0.13 * k);
         part(g, kit.geo.pyramid, roof, 0.12 * k, 0.3 * k, 0, 0.16 * k, 0.12 * k, 0.16 * k);
         if (!ghost) {
           part(g, kit.geo.box, windowMat, -0.05 * k, 0.07 * k, 0.1 * k, 0.05 * k, 0.05 * k, 0.012, false);
@@ -113,13 +126,13 @@ export class Pieces {
     // ------------------------------------------------ roads
     const road = (a: THREE.Vector3, c: THREE.Vector3, m: THREE.Material): THREE.Mesh => {
       const len = Math.hypot(c.x - a.x, c.z - a.z) * 0.8;
-      const me = part(this.group, kit.geo.box, m, (a.x + c.x) / 2, Math.max(a.y, c.y) - 0.005, (a.z + c.z) / 2, len, 0.08, 0.15);
+      const me = part(this.group, kit.geo.box, m, (a.x + c.x) / 2, Math.max(a.y, c.y) - 0.005, (a.z + c.z) / 2, len, 0.1, 0.2);
       me.rotation.y = -Math.atan2(c.z - a.z, c.x - a.x);
       return me;
     };
     for (const [eid, b] of Object.entries(view.board.buildings.e)) {
       const id = Number(eid), e = topo.edges[id]!;
-      const me = road(this.c.interPoint(e.a), this.c.interPoint(e.b), mat(colorOf(b.player), { rough: 0.7 }));
+      const me = road(this.c.interPoint(e.a), this.c.interPoint(e.b), mat(colorOf(b.player), { rough: 0.7, glow: true }));
       const born = freshE?.get(id);
       if (born !== undefined && now - born < POP_MS) this.pops.push({ obj: me, born });
     }

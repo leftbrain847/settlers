@@ -37,6 +37,7 @@ Read all of this before changing the platform or an app's platform-facing parts.
 | One Access login covering every `/<id>/` path | **Not yet verified live** *(verify with two apps before scaling)* |
 | Invite mode: turn rooms joined by link, no login (host key, signed room links, host approval, bots, turn timers, hidden info, profiles) | Built (lifted from Settlers' own host, where it ran its tests and e2e); unit-tested here. **Not yet deployed live** |
 | Template: solo, turn and invite samples, tests, builds | Built; CI generates all three and runs their checks |
+| Sprint demo (`npm run build:demo`, `npm run snapshot`): the app as one self-contained page, no server | Built for solo and invite apps; CI builds both. Turn apps have none (rooms need Access) |
 | `create-app`, `sync`, `platform-config` scripts | Built; exercised by CI |
 | App CI: test, deploy, smoke, auto-rollback | Written. The smoke test is checked locally against a fake walled server (passes) and a fake open one (fails). **Not yet run against a live deploy** |
 | Android build + Play internal-track upload | Written; **untested** (Capacitor 8.5.3, `r0adkll/upload-google-play@v1`) *(verify)* |
@@ -66,7 +67,9 @@ SPEC.md                   this file (copied into every app as platform/SPEC.md)
 ```
 app.config.json      id, title, mode, host overrides, targets: the app's settings
 src/app.ts           the rules: a GameModule
-src/client/          UI: main.ts, ui.ts (DOM helpers, text only), styles.css (theme tokens)
+src/client/          UI: main.ts, ui.ts (DOM helpers, text only), styles.css (theme tokens), demo.ts (sprint demo entry)
+demo/                the sprint demo build: one self-contained page (solo and invite apps)
+snapshots/           committed day snapshots, `YYYY-MM-DD - <Title>.html` (frozen records; the index repo finds them)
 test/app.test.ts     vitest
 worker/index.ts      registers the module with the host; nothing else
 platform/            GENERATED: host + SDK source, SPEC.md, platform.config.json, VERSION.json
@@ -200,20 +203,26 @@ Friends only, via the browser link. A home-screen shortcut keeps its own cookies
 
 **app_builder (`.github/workflows/ci.yml`):**
 - Runs the platform's tests.
-- Generates a solo and a turn app from the template and puts each through install, typecheck, tests, build and a dry-run deploy, plus the Play bundle check.
+- Generates a solo, a turn and an invite app from the template and puts each through install, typecheck, tests, build and a dry-run deploy, plus the Play bundle check. For solo and invite it also builds the sprint demo, which fails on any network code or any file the page would need beside it.
 - Deploys the platform Worker on `main` once `platform.config.json` is filled in and the token secret exists.
 
 **Dev never spends the shared pool.** Use `npm run dev` (UI only), `npm run worker:dev` (`wrangler dev`, local) and vitest. No staging Worker on the production account.
 
-### 8. Adding an app
+### 8. Adding an app (one sprint day)
 
-1. J creates an empty GitHub repo for it.
-2. In a session with that repo and app_builder attached: `node scripts/create-app.mjs <id> --mode solo|turn --title "<Title>" --out <path to the app repo clone>`. Then `npm install` there and commit `package-lock.json` too: CI uses `npm ci`.
-3. Write the rules in `src/app.ts`, the UI in `src/client/main.ts` and tests in `test/`, keeping the sample's shape.
-4. Add `{ "id": "<id>", "title": "<Title>" }` to `app_builder/apps.json` and push app_builder. CI redeploys the platform Worker, so the app shows on the index page.
-5. J adds the `CLOUDFLARE_API_TOKEN` secret to the app repo. Push `main`: CI tests, deploys and smoke-tests it.
-6. For Play: tag `v0.1.0`. CI uploads to the internal track; J fills in the listing and runs the closed test.
+A new app is normally one day of J's sprint. **The day ships when its demo page is published and committed**, not when Cloudflare deploys; the live friends link comes later, once the secrets exist.
 
+1. **Setup (J).** Create an empty GitHub repo. Start a session with it, `app_builder` and `index` attached, and type `/ship-app <id>: <what to build>` (or attach a brief).
+2. **Generate.** Pick the mode: `solo` for single-player, `invite` for anything multiplayer (it plays in the demo page against bots), `turn` only if J asks (it needs Access and has no demo). Run `node scripts/create-app.mjs <id> --mode <mode> --title "<Title>" --out <app repo clone>`, then `npm install` there and commit `package-lock.json` (CI uses `npm ci`).
+3. **Build.** Write the rules in `src/app.ts`, the UI in `src/client/` and tests in `test/`, keeping the sample's shape. `npm run typecheck && npm test && npm run build && npm run build:demo` must pass.
+4. **Play-test it like a person.** Open `dist/demo/page.html` at phone width (390 px) in Chromium, play several full turns, and look at the screenshots. Everything a player needs (whose turn it is, what was rolled or drawn, what just moved, the result) must stay on screen long enough to read. Check there's no horizontal overflow at 360 px. Fix what you find before publishing.
+5. **Write the demo clip.** Edit `demo/clip.json`: the script the index uses to record the app's homepage clip, a 4–9 s dark-mode video that plays once on hover and holds its last frame. It must show the app's core function within the first 1–2 seconds (the move, the answer, the result), with no intro or menus. Steps before `{"start": true}` set the scene and aren't shown; then a few `tap`/`type`/`wait` steps do the core thing. `selector` is the part of the page to show. `npm run build:demo` checks the format.
+6. **Publish the day's artifact.** Publish `dist/demo/page.html` as a Claude artifact. Its title is already `YYYY-MM-DD - <Title>`, dated in `app.config.json` → `sprint.timeZone`. Republish the same artifact for fixes during the day; once the day is over, it's a frozen record.
+7. **Snapshot and PRs.** Run `npm run snapshot` and commit `snapshots/YYYY-MM-DD - <Title>.html` with the app, then open the app's PR. In a separate app_builder PR, add `{ "id": "<id>", "title": "<Title>" }` to `apps.json`. No index edit is needed: its nightly refresh finds the snapshot on the app's default branch.
+8. **Report.** Give the artifact link, the PRs J has to merge, and the public sprint site (`https://<owner>.github.io/<index.yml config.site.repo>/`). After J merges, the index's nightly refresh (1:47 AM ET) lists the day. It publishes the day on the public site only if the page carries the `sprint-public` tag (`sprint.public` in `app.config.json`) and passes UAT and the secret scan. To publish sooner, J presses Run workflow on index's refresh-index.
+9. **Later: the live friends link.** J adds the `CLOUDFLARE_API_TOKEN` secret to the app repo (invite apps also need `wrangler secret put HOST_KEY`), and the next push to `main` deploys and smoke-tests. For Play, tag `v0.1.0`; CI uploads to the internal track, and J fills in the listing and runs the closed test.
+
+**Shipped, sprint day:** the artifact is published, the app PR holds the snapshot, typecheck, tests, build and `build:demo` pass, it was play-tested at phone width, and `demo/clip.json` shows the core function.
 **Shipped, friends:** a deployed URL, a green smoke test, README budget notes, and at least one rules test.
 **Shipped, Play:** on the internal track with the no-network check green.
 
