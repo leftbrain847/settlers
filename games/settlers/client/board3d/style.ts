@@ -48,6 +48,11 @@ export const LIGHTS: Record<LightId, LightPreset> = {
   night: { id: 'night', label: 'Night', sky: '#0a1226', fog: '#0c1630', fogNear: 1.1, fogFar: 3.0, hemiSky: '#6a88cc', hemiGround: '#141c38', hemi: 1.35, sun: '#a9c0ff', sunPower: 1.9, sunPos: [6, 9, -5], exposure: 1.25, windows: 1, chipTint: '#aebbd8', waterTint: '#6d86c8' },
 };
 
+/** How bright the board (terrain, props, sea) is next to the player pieces, in every style and light. */
+export const BACKDROP_DIM = 0.5;
+/** Self-glow on player pieces, as a share of their colour, so dimming the backdrop does not dim them. */
+export const PIECE_GLOW = 0.6;
+
 export type PaletteId = 'natural' | 'ocean' | 'nord' | 'pastel' | 'night';
 
 export interface Palette {

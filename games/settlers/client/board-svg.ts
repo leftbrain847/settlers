@@ -159,7 +159,7 @@ export class BoardView implements BoardRenderer {
       const d = city
         ? `M${-9 * s * 0.75},${7} L${-9 * s * 0.75},${-3} L${-2},${-3} L${-2},${-8} L${3},${-12} L${8},${-8} L${8},${7} Z`
         : 'M-8,6 L-8,-2 L0,-9 L8,-2 L8,6 Z';
-      return sv('g', { transform: `translate(${p.x},${p.y})`, class: 'piece' + (ghost ? ' ghost' : '') },
+      return sv('g', { transform: `translate(${p.x},${p.y}) scale(1.25)`, class: 'piece' + (ghost ? ' ghost' : '') },
         sv('path', { d, class: 'piece-shape' + (born !== undefined ? ' pop' : ''), style: { fill: `var(--p${idx(player)})`, ...(born !== undefined ? { animationDelay: `${-(Date.now() - born)}ms` } : {}) } }));
     };
     for (const [iid, b] of Object.entries(view.board.buildings.i)) buildLayer.append(drawPiece(b.player, pos[Number(iid)], b.type, false, targets.fresh?.i.get(Number(iid))));
