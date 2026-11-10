@@ -3,6 +3,9 @@
 /** @returns {import('./types.ts').GameConfig} */
 import type { GameConfig, Settings } from './types.ts';
 
+/** Seats per game, bots included. Six matches the six player colours in every theme. */
+export const MAX_PLAYERS = 6;
+
 export function baseGame(): GameConfig {
   return {
     name: 'Standard Catan',
@@ -125,7 +128,7 @@ export function baseGame(): GameConfig {
       port_counts: { generic: 4, clay_port: 1, wood_port: 1, rock_port: 1, wheat_port: 1, sheep_port: 1 },
     },
     setup_rules: {
-      min_players: 2, max_players: 4, initial_placements: 2,
+      min_players: 2, max_players: MAX_PLAYERS, initial_placements: 2,
       placement_order: 'forward_reverse', last_placement_gives_resources: true,
     },
     robber: {
