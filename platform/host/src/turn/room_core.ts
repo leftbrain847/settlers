@@ -193,7 +193,7 @@ export class RoomCore {
     if (released) this.broadcastLobby(out);   // everyone's seat list shows the player back, not still on a bot
     if (!r.ok) {
       out.error(conn.id, 'illegal', r.error);
-      if (released) await this.afterChange(out, now, false);   // the seat change still has to be saved and the timer reset
+      if (released) await this.afterChange(out, now, false);   // the seat change still has to be saved and the timer re-armed
       return;
     }
     this.state = r.state;
@@ -221,7 +221,11 @@ export class RoomCore {
     if (this.instance && this.state && m.phase === 'playing') {
       this.instance.timers.sync(this.state, now);
       const w = this.instance.waitingOn(this.state);
-      if (w.key !== m.waitKey) { m.waitKey = w.key; m.waitDeadline = m.turnTimerS > 0 && w.seats.some((id: string) => this.isHuman(id)) ? now + m.turnTimerS * 1000 : null; }
+      const humanWaited = m.turnTimerS > 0 && w.seats.some((id: string) => this.isHuman(id));
+      if (w.key !== m.waitKey) { m.waitKey = w.key; m.waitDeadline = humanWaited ? now + m.turnTimerS * 1000 : null; }
+      // A person waited on with no timer running (their seat just came back from a bot): start one. A running timer is
+      // never extended here, so toggling autopilot or reconnecting cannot buy more time.
+      else if (m.waitDeadline === null && humanWaited) m.waitDeadline = now + m.turnTimerS * 1000;
       if (this.instance.isOver(this.state)) await this.finish(now);
       else {
         const plan = this.instance.bots.plan(this.state, this.botSeatIds());
