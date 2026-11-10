@@ -11,12 +11,15 @@ const GOAL_SETTLEMENT: ResMap = { clay: 1, wood: 1, wheat: 1, sheep: 1 };
 const GOAL_ROAD: ResMap = { clay: 1, wood: 1 };
 const GOAL_DEV: ResMap = { rock: 1, wheat: 1, sheep: 1 };
 
-function goalsFor(p: SelfView): ResMap[] {
+const maxOf = (cfg: GameConfig, id: string): number => cfg.building_types[id]?.max_per_player ?? 0;
+
+/** What the bot saves for, best first. A city returns its settlement to the supply, so only settlements on the board count. */
+export function goalsFor(cfg: GameConfig, p: SelfView): ResMap[] {
   const settlements = p.buildings_placed.settlement ?? 0;
   const cities = p.buildings_placed.city ?? 0;
   const goals: ResMap[] = [];
-  if (settlements > 0) goals.push(GOAL_CITY);
-  if (settlements + cities < 5) goals.push(GOAL_SETTLEMENT);
+  if (settlements > 0 && cities < maxOf(cfg, 'city')) goals.push(GOAL_CITY);
+  if (settlements < maxOf(cfg, 'settlement')) goals.push(GOAL_SETTLEMENT);
   goals.push(GOAL_ROAD, GOAL_DEV);
   return goals;
 }
@@ -60,14 +63,14 @@ function chooseRoad(view: GameView, topo: Topology, roads: LegalOf<'build'>[], r
   return best ?? choice(rng, roads);
 }
 
-function roadHasValue(view: GameView, topo: Topology, me: SelfView, a: LegalOf<'build'>): boolean {
-  if ((me.buildings_placed.road ?? 0) >= 13) return false;
+function roadHasValue(cfg: GameConfig, view: GameView, topo: Topology, me: SelfView, a: LegalOf<'build'>): boolean {
+  if ((me.buildings_placed.road ?? 0) >= maxOf(cfg, 'road') - 2) return false;
   const e = topo.edges[a.location]!;
   return [e.a, e.b].some((i) => nearbySpot(view, topo, i, 2));
 }
 
-function chooseBankTrade(me: SelfView, trades: LegalOf<'trade_bank'>[]): LegalOf<'trade_bank'> | null {
-  for (const goal of goalsFor(me)) {
+function chooseBankTrade(cfg: GameConfig, me: SelfView, trades: LegalOf<'trade_bank'>[]): LegalOf<'trade_bank'> | null {
+  for (const goal of goalsFor(cfg, me)) {
     const missing: ResMap = {};
     for (const [r, need] of Object.entries(goal)) {
       const deficit = need - (me.resources[r] ?? 0);
@@ -89,7 +92,7 @@ function chooseBankTrade(me: SelfView, trades: LegalOf<'trade_bank'>[]): LegalOf
 }
 
 function choosePlayerTrade(cfg: GameConfig, me: SelfView): OfferShape | null {
-  for (const goal of goalsFor(me)) {
+  for (const goal of goalsFor(cfg, me)) {
     const missing: ResMap = {};
     const surplus: ResMap = {};
     for (const r of Object.keys(cfg.resource_types)) {
@@ -169,14 +172,14 @@ export const smartStrategy: Strategy = {
 
     if (roads.length) {
       const chosen = chooseRoad(view, topo, roads, rng);
-      if (roadHasValue(view, topo, me, chosen)) {
-        if (settlementCount < 4 || roadCount < 5) return act(chosen);
+      if (roadHasValue(cfg, view, topo, me, chosen)) {
+        if (settlementCount < maxOf(cfg, 'settlement') - 1 || roadCount < 5) return act(chosen);
         if (chance(rng, 0.6)) return act(chosen);
       }
     }
 
     if (by.trade_bank?.length) {
-      const t = chooseBankTrade(me, by.trade_bank);
+      const t = chooseBankTrade(cfg, me, by.trade_bank);
       if (t) return act(t);
     }
 
@@ -240,7 +243,7 @@ export const smartStrategy: Strategy = {
   chooseMonopoly(cfg, view, rng) {
     const me = selfView(view);
     const want: ResMap = {};
-    for (const goal of goalsFor(me).slice(0, 2)) {
+    for (const goal of goalsFor(cfg, me).slice(0, 2)) {
       for (const [r, need] of Object.entries(goal)) want[r] = (want[r] ?? 0) + Math.max(0, need - (me.resources[r] ?? 0));
     }
     const kinds = Object.keys(cfg.resource_types);

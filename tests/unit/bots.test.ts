@@ -98,3 +98,15 @@ test('TradeClock: 70s for human offers, 20s for bot offers, 15s for counters, ea
   assert.deepEqual(clock.due(6500), ['t4']);
 
 });
+
+test('a bot keeps saving for settlements after upgrading to cities (a city returns its settlement)', async () => {
+  const { goalsFor } = await import('../../games/settlers/ai/smart.ts');
+  const cfg = configFromSettings({});
+  const me = (settlement: number, city: number) => ({ buildings_placed: { settlement, city } }) as unknown as Parameters<typeof goalsFor>[1];
+  const wantsSettlement = (s: number, c: number) => goalsFor(cfg, me(s, c)).some((g) => 'sheep' in g && 'clay' in g);
+  const wantsCity = (s: number, c: number) => goalsFor(cfg, me(s, c)).some((g) => g.rock === 3);
+  assert.equal(wantsSettlement(2, 3), true, '2 settlements + 3 cities: 3 settlements still in supply');
+  assert.equal(wantsSettlement(5, 0), false, 'all 5 settlements on the board');
+  assert.equal(wantsCity(1, 4), false, 'all 4 cities on the board');
+  assert.equal(wantsCity(1, 3), true);
+});
