@@ -219,3 +219,23 @@ test('without online play the lobby does not promise friends', () => {
   boot(document.getElementById('app')!, { storage: memStore(), online: false });
   assert.equal(maybe('.lobby p.dim')?.textContent, 'Play against bots.');
 });
+
+test('trade sheet: "Offer" shows all five resources with how many you hold; unheld ones are greyed', async () => {
+  const { app } = start();
+  for (let i = 0; i < 400; i++) {
+    await settle(app);
+    const t = button('Trade');
+    if (t && !t.hasAttribute('disabled') && !button('Roll dice') && !maybe('.sheet') && !maybe('.target-hit')) break;
+    await step(app, () => 0.99);
+  }
+  button('Trade')!.click();
+  assert.deepEqual($$('.sheet h4').map((e) => e.textContent), ['Offer', 'Receive']);
+  const cells = [...$$('.sheet .rgrid')[0]!.querySelectorAll('.rcell')];
+  assert.equal(cells.length, 5);
+  const { view, cfg } = snapOf(app);
+  const hand = view.players[view.me].resources!;
+  for (const [i, r] of Object.keys(cfg.resource_types).entries()) {
+    assert.equal(cells[i]!.querySelector('.rhave')?.textContent, `of ${hand[r] ?? 0}`);
+    assert.equal(cells[i]!.classList.contains('none'), !(hand[r] ?? 0));
+  }
+});

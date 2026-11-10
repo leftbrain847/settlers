@@ -22,17 +22,20 @@ let current: SheetCtx | null = null;
 export function withCtx<T>(c: SheetCtx, fn: () => T): T { current = c; return fn(); }
 const rerender = (): void => { current?.rerender(); };
 
-function stepper(cfg: GameConfig, r: string, value: number, max: number, onChange: (v: number) => void): HTMLElement {
-  return h('div.rcell' + (value ? '.has' : ''), { style: { '--c': `var(--r-${r})` } },
+function stepper(cfg: GameConfig, r: string, value: number, max: number, onChange: (v: number) => void, have?: number): HTMLElement {
+  const none = have !== undefined && have <= 0;
+  return h('div.rcell' + (value ? '.has' : '') + (none ? '.none' : ''), { style: { '--c': `var(--r-${r})` } },
     h('span.rname', { title: resName(cfg, r), 'aria-label': resName(cfg, r) }, icon(resIcon(r), 22)),
     h('span.rval', value),
+    have === undefined ? null : h('span.rhave', `of ${have}`),
     h('div.pm',
       h('button.step', { disabled: value <= 0, onclick: () => onChange(value - 1), 'aria-label': `less ${resName(cfg, r)}` }, '−'),
       h('button.step', { disabled: value >= max, onclick: () => onChange(value + 1), 'aria-label': `more ${resName(cfg, r)}` }, '+')));
 }
 
-function steppers(cfg: GameConfig, draft: ResMap, kinds: string[], caps: ResMap): HTMLElement {
-  return h('div.rgrid', kinds.map((r) => stepper(cfg, r, draft[r] ?? 0, caps[r] ?? 0, (v) => { if (v > 0) draft[r] = v; else delete draft[r]; rerender(); })));
+/** One cell per resource, always all of them. Pass `held` to show "of N" and grey out what the player has none of. */
+function steppers(cfg: GameConfig, draft: ResMap, kinds: string[], caps: ResMap, held?: ResMap): HTMLElement {
+  return h('div.rgrid', kinds.map((r) => stepper(cfg, r, draft[r] ?? 0, caps[r] ?? 0, (v) => { if (v > 0) draft[r] = v; else delete draft[r]; rerender(); }, held ? held[r] ?? 0 : undefined)));
 }
 
 interface BtnOpts { primary?: boolean; disabled?: boolean; cls?: string }
@@ -53,7 +56,7 @@ export function discardSheet({ view, cfg, ui, send }: SheetCtx): HTMLElement {
   const d = (ui.draft.discard ??= {});
   const have = sum(d);
   return h('div', h('p.dim', `Choose ${need} cards to discard (${have}/${need}).`),
-    steppers(cfg, d, Object.keys(cfg.resource_types), handOf(me)),
+    steppers(cfg, d, Object.keys(cfg.resource_types), handOf(me), handOf(me)),
     btn('Discard', () => { send('discard', { resources: { ...d } }); ui.draft.discard = {}; }, { primary: true, disabled: have !== need }));
 }
 
@@ -139,7 +142,7 @@ export function tradeSheet(ctx: SheetCtx): HTMLElement {
   const cap9: ResMap = Object.fromEntries(kinds.map((r) => [r, 9]));
   const others = view.player_order.filter((p) => p !== view.me).map((p) => view.players[p].name).join(', ');
   return h('div', tabs, h('p.dim.small', `To ${others}. Bots answer at once; people get ${cfg.trade_rules.human_response_timer}s.`),
-    h('h4', 'Give'), steppers(cfg, t.give, kinds, handOf(me)),
+    h('h4', 'Offer'), steppers(cfg, t.give, kinds, handOf(me), handOf(me)),
     h('h4', 'Receive'), steppers(cfg, t.want, kinds, cap9),
     btn('Send offer', () => { send('trade_offer', { offering: { ...t.give }, requesting: { ...t.want } }); ui.draft.trade = { give: {}, want: {} }; ui.sheet = null; }, { primary: true, disabled: !canSend }));
 }
@@ -157,8 +160,8 @@ function bankPane({ view, cfg, ui, send }: SheetCtx): HTMLElement {
     h('button.btn.res-btn' + (b[key] === r ? '.on' : ''), { style: { '--c': `var(--r-${r})` }, disabled: !set.has(r), 'aria-label': resName(cfg, r), onclick: () => { b[key] = r; rerender(); } }, icon(resIcon(r), 24));
   const ratio = b.give ? bankRatio(cfg, { ports: me.ports }, b.give) : null;
   const give = b.give, want = b.want;
-  return h('div', h('h4', 'Give'), h('div.pickrow', kinds.map((r) => pick('give', gives, r))),
-    h('h4', 'Get'), h('div.pickrow', kinds.map((r) => pick('want', new Set(wants), r))),
+  return h('div', h('h4', 'Offer'), h('div.pickrow', kinds.map((r) => pick('give', gives, r))),
+    h('h4', 'Receive'), h('div.pickrow', kinds.map((r) => pick('want', new Set(wants), r))),
     h('p.dim.small', gives.size ? 'Ports improve your ratio.' : 'You do not have enough of any resource to trade with the bank.'),
     btn(give && want ? h('span.tradeline', String(ratio), icon(resIcon(give), 20), icon('swap', 18), '1', icon(resIcon(want), 20)) : 'Choose resources', () => {
       if (!give || !want) return;
@@ -180,7 +183,7 @@ export function incomingSheet({ view, cfg, ui, send, snap, offer }: IncomingCtx)
     const kinds = Object.keys(cfg.resource_types);
     return h('div', h('h4', `Counter ${from.name}`),
       h('p.dim.small', 'Receive'), steppers(cfg, counterDraft.they, kinds, Object.fromEntries(kinds.map((r) => [r, 9]))),
-      h('p.dim.small', 'Give'), steppers(cfg, counterDraft.you, kinds, hand),
+      h('p.dim.small', 'Offer'), steppers(cfg, counterDraft.you, kinds, hand, hand),
       h('div.btnrow', btn('Send counter', () => { send('trade_offer', { offering: { ...counterDraft.you }, requesting: { ...counterDraft.they }, counter_to: offer.id }); ui.draft.counter = null; }, { primary: true, disabled: !(sum(counterDraft.they) && sum(counterDraft.you)) }),
         btn('Back', () => { ui.draft.counter = null; rerender(); })));
   }
@@ -207,7 +210,7 @@ export function waitingSheet({ view, cfg, send, snap, offer, counters }: Waiting
   const side = (label: string, m: ResMap): HTMLElement => h('div.side', h('div.side-label', label), h('div.costs', Object.entries(m).map(([r, n]) => chip(cfg, r, n))));
   const counterRows = counters.map((c) => h('div.row', h('div.row-main', h('strong', `${view.players[c.from_player].name} counters`), h('div.costs', h('span.dim.small', 'gives '), Object.entries(c.offering).map(([r, n]) => chip(cfg, r, n)), h('span.dim.small', ' for '), Object.entries(c.requesting).map(([r, n]) => chip(cfg, r, n)))),
     btn('Accept', () => send('trade_respond', { trade_id: c.id, response: 'accept' }), { primary: true }), btn('Decline', () => send('trade_respond', { trade_id: c.id, response: 'decline' }))));
-  return h('div', h('div.trade', side('Give', offer.offering), h('span.arrow', '⇄'), side('Receive', offer.requesting)),
+  return h('div', h('div.trade', side('Offer', offer.offering), h('span.arrow', '⇄'), side('Receive', offer.requesting)),
     h('div.list', rows, counterRows), timerBar(snap, offer.id),
     btn('Withdraw offer', () => send('trade_cancel', { trade_id: offer.id })));
 }
