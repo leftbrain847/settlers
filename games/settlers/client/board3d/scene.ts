@@ -297,8 +297,11 @@ export function buildBoard(o: BuildOpts): Built {
 
   // ---------------------------------------------------------------- sea (or felt) and tray
   const seaR = maxR + 12;
+  // Only coast tiles (fewer than 6 neighbours) can be the land nearest to a sea point. Passing just those keeps the sea
+  // shader's per-pixel loop and uniform array small on big boards: 42 tiles at 8 rings instead of 169, which phones need.
+  const coastXZ = view.board.hexes.filter((h) => topo.hexAdj[h.id]!.length < 6).map((h) => tileXZ[h.id]);
   const seaUniform = { value: 0 };
-  const seaMesh = new THREE.Mesh(new THREE.PlaneGeometry(seaR * 2, seaR * 2, 1, 1).rotateX(-Math.PI / 2), seaMaterial(tileXZ, pal, light, seaUniform, style));
+  const seaMesh = new THREE.Mesh(new THREE.PlaneGeometry(seaR * 2, seaR * 2, 1, 1).rotateX(-Math.PI / 2), seaMaterial(coastXZ, pal, light, seaUniform, style));
   seaMesh.receiveShadow = false;
   scene.add(seaMesh);
   disposables.push(seaMesh.geometry, seaMesh.material as THREE.Material);
