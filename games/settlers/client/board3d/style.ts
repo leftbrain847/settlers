@@ -1,6 +1,7 @@
 // Visual presets for the 3D board. A style decides how things are built; a light decides time of day; a palette
 // (the same four themes as the 2D board) decides colors.
 import { THEMES } from '../theme.ts';
+import { PLAYER_COLORS } from '../../engine/state.ts';
 
 export type StyleId = 'civ' | 'realistic' | 'tabletop';
 export type LightId = 'day' | 'dusk' | 'night';
@@ -72,7 +73,7 @@ const EXTRAS: Record<Exclude<PaletteId, 'natural'>, Extras> = {
 /** Earth tones for the 3D board: it reads as a landscape rather than a theme. */
 const NATURAL: Palette = {
   terrain: { hills: '#b8643f', forest: '#557f3c', mountains: '#8c9196', fields: '#cfae52', pasture: '#8fbf5e', desert: '#e3cb8f' },
-  players: ['#d94b4b', '#3b7dd8', '#f2f2f2', '#f0a030', '#8e5bd6', '#2fb58a'],
+  players: PLAYER_COLORS,
   sea: '#2f86b3', shore: '#8fe0d6', deep: '#154c78', foliage: '#3f7f3d', grass: '#79b04e', wheat: '#e0b840',
 };
 

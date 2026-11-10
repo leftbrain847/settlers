@@ -2,7 +2,8 @@ import { generateBoard } from './board.ts';
 import { shuffle, pick } from './rng.ts';
 import type { BuildingType, GameConfig, GameEvent, GameState, Player, ResMap } from './types.ts';
 
-export const PLAYER_COLORS = ['#e74c3c', '#3498db', '#ecf0f1', '#f39c12', '#9b59b6', '#1abc9c'];
+/** Seat colours, the same in every theme and board view. They pass the piece visibility rules in client/contrast.ts. */
+export const PLAYER_COLORS = ['#ff1a1a', '#1f3dff', '#ffffff', '#fff02d', '#ff3cb4', '#000000'];
 
 export function addLog(s: GameState, type: string, data: Record<string, unknown> = {}): void {
   s.log.push({ type, turn: s.turn_number, ...data });

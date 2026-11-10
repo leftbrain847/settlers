@@ -45,7 +45,7 @@ h4.group { margin-top: 16px; }
 .players > .pchip .pmeta .ico { width: 11px; height: 11px; }
 .players > .pchip .pmeta .ico + .ico, .players > .pchip .pmeta :not(.ico) + .ico { margin-left: 4px; }
 .pchip.active { border-color: var(--accent2); }
-.pchip .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--pc); grid-row: 1 / span 2; box-shadow: 0 0 0 2px rgba(0,0,0,.35); }
+.pchip .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--pc); grid-row: 1 / span 2; box-shadow: 0 0 0 2px rgba(255,255,255,.6); } /* light ring: the black seat must show on the dark bar */
 .pname { font-weight: 700; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; } .pvp { font-weight: 800; color: var(--accent2); font-size: 13px; }
 .pmeta { grid-column: 2 / span 2; font-size: 11px; color: var(--dim); white-space: nowrap; }
 .badge { margin-left: 4px; padding: 0 5px; border-radius: 4px; background: var(--accent2); color: #1b1b1b; font-size: 10px; font-weight: 800; }
@@ -161,7 +161,7 @@ code.link { display: block; padding: 10px; border-radius: 8px; background: var(-
 .pmeta .ico { color: var(--dim); }
 .pmeta .ico + .ico, .pmeta :not(.ico) + .ico { margin-left: 5px; }
 .owes { display: inline-flex; align-items: center; gap: 2px; margin-left: 6px; padding: 0 5px; border-radius: 999px; background: #8a2f2f; color: #fff; font-weight: 800; }
-.pchip.me { box-shadow: inset 0 -3px 0 var(--pc); }
+.pchip.me { box-shadow: inset 0 -3px 0 var(--pc), inset 0 -4px 0 rgba(255,255,255,.5); }
 .badge { display: inline-grid; place-items: center; padding: 2px 4px; }
 .badge .ico { color: #1b1b1b; }
 .think { display: inline-flex; gap: 3px; margin-left: 6px; align-self: center; }
