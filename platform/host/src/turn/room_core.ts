@@ -128,7 +128,7 @@ export class RoomCore {
     if (!seat) { out.close(connId, 1008, 'seat gone'); return out; }
     switch (msg.t) {
       case 'action': await this.onAction(conn, seat, msg, out, now); break;
-      case 'autopilot': this.setBot(seat, msg.on ? 'self' : 'none'); await this.afterChange(out, now, true); break;
+      case 'autopilot': this.setBot(seat, msg.on ? 'self' : 'none'); this.broadcastLobby(out); await this.afterChange(out, now, true); break;
       case 'profile_create': await this.onProfileCreate(conn, seat, out); break;
       case 'profile_link': await this.onProfileLink(conn, seat, msg.profile, out); break;
       case 'profile_delete': await this.onProfileDelete(conn, seat, msg.profile, out); break;
@@ -187,9 +187,15 @@ export class RoomCore {
     if ((this.meta.phase !== 'playing') || !this.instance) { out.error(conn.id, 'not_playing', 'The game has not started.'); return; }
     const action = this.instance.parseAction(msg.type, msg.params, seat.id); // player_id comes from the seat, never from the client
     if (!action) { out.error(conn.id, 'bad_action', 'That move is not valid.'); return; }
-    if (seat.bot === 'afk' || seat.bot === 'self') this.setBot(seat, 'none');
+    const released = seat.bot === 'afk' || seat.bot === 'self';
+    if (released) this.setBot(seat, 'none');
     const r = this.instance.reduce(this.state, action);
-    if (!r.ok) { out.error(conn.id, 'illegal', r.error); return; }
+    if (released) this.broadcastLobby(out);   // everyone's seat list shows the player back, not still on a bot
+    if (!r.ok) {
+      out.error(conn.id, 'illegal', r.error);
+      if (released) await this.afterChange(out, now, false);   // the seat change still has to be saved and the timer reset
+      return;
+    }
     this.state = r.state;
     this.meta.botFailures = 0; // the game moved on: paused bots get to try again
     await this.afterChange(out, now, true, r.events);
