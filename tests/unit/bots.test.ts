@@ -110,3 +110,18 @@ test('a bot keeps saving for settlements after upgrading to cities (a city retur
   assert.equal(wantsCity(1, 4), false, 'all 4 cities on the board');
   assert.equal(wantsCity(1, 3), true);
 });
+
+test('six-player bot games finish with no rejected moves; a seventh seat is refused', () => {
+  let finished = 0, rejected = 0;
+  for (let seed = 1; seed <= 4; seed++) {
+    const g = botGame(seed, ['smart', 'smart', 'smart', 'smart', 'smart', 'random']);
+    const end = runBotsSync(g.cfg, g.s, g.bots, g.rng, { maxActions: 12000, onAction: (_a, r) => { if (!r.ok) rejected++; } });
+    if (end.phase === 'finished') finished++;
+  }
+  assert.equal(rejected, 0);
+  assert.ok(finished >= 3, `only ${finished}/4 six-player games finished`);
+  const cfg = configFromSettings({});
+  let s = createGame(cfg, { game_id: 'seven', seed: 1 });
+  for (let i = 0; i < 6; i++) s = addPlayer(cfg, s, { name: `P${i}`, is_ai: true });
+  assert.throws(() => addPlayer(cfg, s, { name: 'P7', is_ai: true }), /Maximum players/);
+});

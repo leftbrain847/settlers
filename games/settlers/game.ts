@@ -1,4 +1,4 @@
-import { configFromSettings, createGame, addPlayer, startGame, reduce, viewFor, redactEvents, playerVp, SYSTEM } from './engine/index.ts';
+import { configFromSettings, createGame, addPlayer, startGame, reduce, viewFor, redactEvents, playerVp, SYSTEM, MAX_PLAYERS } from './engine/index.ts';
 import type { Action, ActionType, GameConfig, GameEvent, GameState, GameView, ResMap, Settings } from './engine/index.ts';
 import { botPlan, createBots, actionDelayMs } from './ai/driver.ts';
 import type { Bots } from './ai/driver.ts';
@@ -186,7 +186,7 @@ class SettlersInstance implements GameInstance<GameState, Action, GameView, Game
 
 export const settlersGame: GameModule<Settings, GameState, Action, GameView, GameEvent> = {
   id: 'settlers',
-  limits: { minPlayers: 2, maxPlayers: 4 },
+  limits: { minPlayers: 2, maxPlayers: MAX_PLAYERS },
   defaultSettings: () => ({}),
   parseSettings,
   create: (settings) => new SettlersInstance(settings),

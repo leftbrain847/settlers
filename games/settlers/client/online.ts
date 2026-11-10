@@ -255,7 +255,7 @@ export class OnlineController {
           h('button.btn.primary.approve', { onclick: () => t.hostCmd({ c: 'approve', request: p.id }) }, 'Let in'), h('button.btn.reject', { onclick: () => t.hostCmd({ c: 'reject', request: p.id }) }, 'No')))),
       h('div.card.form',
         h('h3', 'Game'),
-        h('label.field', h('span', 'Bots to add'), h('select#room-bots', { onchange: (e) => { this.hostBots = Number(selectOf(e).value); } }, [0, 1, 2, 3].map((n) => h('option', { value: n, selected: n === this.hostBots }, `${n}`)))),
+        h('label.field', h('span', 'Bots to add'), h('select#room-bots', { onchange: (e) => { this.hostBots = Number(selectOf(e).value); } }, [0, 1, 2, 3, 4, 5].map((n) => h('option', { value: n, selected: n === this.hostBots }, `${n}`)))),
         h('details.settings', h('summary', 'Game settings'), ...settingsFields(values), h('button.btn.small', { type: 'button', onclick: () => { this.app.prefs.values = defaults(); this.app.savePrefs(); this.renderPre(this.t!.room); } }, 'Reset to defaults')),
         h('button.btn.primary.big#start-room', { disabled: (lobby?.seats.length ?? 0) + this.hostBots < (lobby?.minPlayers ?? 2), onclick: () => {
           this.app.savePrefs();

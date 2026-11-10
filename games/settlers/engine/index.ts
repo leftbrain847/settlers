@@ -1,4 +1,4 @@
-export { baseGame, configFromSettings } from './config.ts';
+export { baseGame, configFromSettings, MAX_PLAYERS } from './config.ts';
 export { createGame, addPlayer, removePlayer, startGame, playerVp, currentPlayerId } from './state.ts';
 export { reduce, ACTION_TYPES } from './reduce.ts';
 export { legalActions } from './legal.ts';
