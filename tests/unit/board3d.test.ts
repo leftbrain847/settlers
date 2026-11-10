@@ -127,3 +127,19 @@ test('pieces: new buildings pop in, then settle at full size', () => {
   b.scene.traverse((o) => { if (o.type === 'Group' && o.scale.x < 0.99) after.push(o.scale.x); });
   assert.equal(after.length, 0);
 });
+
+test('big boards: the sea shader only loops over coast tiles, so it stays within phone GPU limits', async () => {
+  const { configFromSettings, createGame, addPlayer, startGame, viewFor } = await import('../../games/settlers/engine/index.ts');
+  for (const rings of [3, 8]) {
+    const c = configFromSettings({ board_rings: rings });
+    let s = createGame(c, { game_id: 'big', seed: 2 });
+    for (const n of ['a', 'b', 'c']) s = addPlayer(c, s, { name: n });
+    s = startGame(c, s).state;
+    const b = buildBoard({ view: viewFor(c, s, s.player_order[0]!), cfg: c, style: STYLES.realistic, light: LIGHTS.day, pal: paletteOf('natural'), makeCanvas });
+    let key = '';
+    b.scene.traverse((o) => { const m = (o as THREE.Mesh).material as THREE.Material | undefined; const k = m?.customProgramCacheKey?.(); if (k?.startsWith('sea-')) key = k; });
+    const n = Number(key.slice(4));
+    assert.equal(n, rings === 1 ? 1 : 6 * (rings - 1), `${rings} rings: sea loops over ${n} tiles`);
+    b.dispose();
+  }
+});
