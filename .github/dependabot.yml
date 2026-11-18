@@ -5,6 +5,7 @@
 version: 2
 updates:
 - package-ecosystem: npm
+  assignees: [leftbrain847]
   directory: /
   schedule:
     interval: monthly
